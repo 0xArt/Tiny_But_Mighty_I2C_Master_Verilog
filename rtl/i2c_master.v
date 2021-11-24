@@ -78,8 +78,8 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
     reg [ADDR_WIDTH:0] saved_device_addr = 0;
     reg [REG_WIDTH-1:0] saved_reg_addr = 0;
     reg [DATA_WIDTH-1:0] saved_mosi_data = 0;
-    reg[7:0] state = S_IDLE;
-    reg[7:0] post_state = S_IDLE;
+    reg [7:0] state = S_IDLE;
+    reg [7:0] post_state = S_IDLE;
     reg [1:0] proc_counter = 0;
     reg [7:0] bit_counter = 0;
     
@@ -91,15 +91,17 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
     
     wire sda_oe;
     assign sda_oe = ( (state==S_START) || (state==S_WRITE_ADDR_W) || (state==S_WRITE_REG_ADDR) || (state==S_WRITE_REG_ADDR_MSB) || (state==S_WRITE_REG_DATA) || (state==S_WRITE_REG_DATA_MSB) || (state==S_WRITE_ADDR_R) || (state==S_SEND_NACK) || (state==S_SEND_STOP) || (state==S_SEND_ACK) );
-    assign io_sda = (sda_oe) ? sda_out : 1'bz;
     
+    //tri state buffer for scl and sdo
     assign io_scl = (state!=S_IDLE) ? scl_out : 1'bz;
+    assign io_sda = (sda_oe) ? sda_out : 1'bz;
+
     
     
-    
-   reg [15:0] divider_counter = 0;
-   wire divider_tick;
-   assign divider_tick = (divider_counter == i_divider) ? 1 : 0;
+    reg [15:0] divider_counter = 0;
+    wire divider_tick;
+    assign divider_tick = (divider_counter == i_divider) ? 1 : 0;
+
     //i2c divider tick geneartor
     always@(posedge i_clk)begin
         if(i_rst)begin
@@ -155,26 +157,20 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                     end
                     
                     S_START: begin
-                    
                         case(proc_counter)
-                        
                             0: begin
-                               proc_counter <= 1;
-                               o_busy <= 1;
-                               enable <= 0;
+                                proc_counter <= 1;
+                                o_busy <= 1;
+                                enable <= 0;
                             end
-                            
                             1: begin
-                               sda_out <= 0;
-                               proc_counter <= 2;
-
+                                sda_out <= 0;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
-                               proc_counter <= 3;
-                               bit_counter <= 8;
+                                proc_counter <= 3;
+                                bit_counter <= 8;
                             end
-                            
                             3: begin
                                 scl_out <= 0;
                                 proc_counter <= 0;
@@ -190,17 +186,14 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 scl_out <= 0;
                                 bit_counter <= bit_counter -1;
                                 proc_counter <= 3;
                             end
-                            
                             3: begin
                                 if(bit_counter == 0)begin
                                     if(REG_WIDTH == 16)begin
@@ -228,12 +221,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               ack_recieved <= 0;
-                               proc_counter <= 2;
+                                ack_recieved <= 0;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 scl_out <= 0;
                                 if(io_sda == 0)begin
@@ -241,7 +232,6 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 end
                                 proc_counter <= 3;
                             end
-                            
                             3: begin
                                 if(ack_recieved)begin
                                     state <= post_state;
@@ -256,24 +246,20 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                         endcase
                     end
                     
-                    
                     S_WRITE_REG_ADDR_MSB: begin
                         case(proc_counter)
                             0:begin
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 scl_out <= 0;
                                 bit_counter <= bit_counter -1;
                                 proc_counter <= 3;
                             end
-                            
                             3: begin
                                 if(bit_counter == 0)begin
                                     post_state <= S_WRITE_REG_ADDR;
@@ -296,17 +282,14 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 scl_out <= 0;
                                 bit_counter <= bit_counter -1;
                                 proc_counter <= 3;
                             end
-                            
                             3: begin
                                 if(bit_counter == 0)begin
                                     if(rw == 0)begin
@@ -328,13 +311,12 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                     state <= S_CHECK_ACK;
                                 end
                                 else begin
-                                  sda_out <= saved_reg_addr[bit_counter-1];
+                                    sda_out <= saved_reg_addr[bit_counter-1];
                                 end
                                 proc_counter <= 0;
                             end
                         endcase
                     end
-                    
                     
                     S_WRITE_REG_DATA_MSB: begin
                         case(proc_counter)
@@ -342,17 +324,14 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 scl_out <= 0;
                                 bit_counter <= bit_counter -1;
                                 proc_counter <= 3;
                             end
-                            
                             3: begin
                                 if(bit_counter == 0)begin
                                     state <= S_CHECK_ACK;
@@ -362,13 +341,12 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                     sda_out <= 0;
                                 end
                                 else begin
-                                  sda_out <= saved_mosi_data[bit_counter+7];
+                                    sda_out <= saved_mosi_data[bit_counter+7];
                                 end
                                 proc_counter <= 0;
                             end
                         endcase
                     end
-                    
                     
                     S_WRITE_REG_DATA: begin
                         case(proc_counter)
@@ -376,17 +354,14 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 scl_out <= 0;
                                 bit_counter <= bit_counter -1;
                                 proc_counter <= 3;
                             end
-                            
                             3: begin
                                 if(bit_counter == 0)begin
                                     state <= S_CHECK_ACK;
@@ -396,7 +371,7 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                     sda_out <= 0;
                                 end
                                 else begin
-                                  sda_out <= saved_mosi_data[bit_counter-1];
+                                    sda_out <= saved_mosi_data[bit_counter-1];
                                 end
                                 proc_counter <= 0;
                             end
@@ -408,16 +383,13 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                             0:begin
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
-                               scl_out <= 1;
+                                proc_counter <= 2;
+                                scl_out <= 1;
                             end
-                            
                             2: begin
                                 proc_counter <= 3;
                             end
-                            
                             3: begin
                                 state <= S_START;
                                 post_state <= S_WRITE_ADDR_R;
@@ -433,17 +405,14 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 scl_out <= 0;
                                 bit_counter <= bit_counter -1;
                                 proc_counter <= 3;
                             end
-                            
                             3: begin
                                 if(bit_counter == 0)begin
                                     if(DATA_WIDTH == 16)begin
@@ -471,11 +440,9 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 scl_out <= 0; 
                                 //sample data on this rising edge of scl
@@ -483,7 +450,6 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 bit_counter <= bit_counter -1;
                                 proc_counter <= 3;
                             end
-                            
                             3: begin
                                 if(bit_counter == 0)begin
                                     post_state <= S_READ_REG;
@@ -496,18 +462,15 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                         endcase
                     end
                     
-                    
                     S_READ_REG: begin
                         case(proc_counter)
                             0:begin
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 scl_out <= 0; 
                                 //sample data on this rising edge of scl
@@ -515,7 +478,6 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 bit_counter <= bit_counter -1;
                                 proc_counter <= 3;
                             end
-                            
                             3: begin
                                 if(bit_counter == 0)begin
                                     state <= S_SEND_NACK;
@@ -532,16 +494,13 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 proc_counter <= 3;
                                 scl_out <= 0;
                             end
-                            
                             3: begin
                                 state <= S_SEND_STOP;
                                 proc_counter <= 0;
@@ -550,7 +509,6 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                         endcase
                     end
                     
-                    
                     S_SEND_ACK: begin
                         case(proc_counter)
                             0:begin
@@ -558,16 +516,13 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                                 sda_out <= 0;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 proc_counter <= 3;
                                 scl_out <= 0;
                             end
-                            
                             3: begin
                                 state <= post_state;
                                 proc_counter <= 0;
@@ -581,31 +536,23 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 scl_out <= 1;
                                 proc_counter <= 1;
                             end
-                            
                             1: begin
-                               proc_counter <= 2;
+                                proc_counter <= 2;
                             end
-                            
                             2: begin
                                 proc_counter <= 3;
                                 sda_out <= 1;
                             end
-                            
                             3: begin
                                 state <= S_IDLE;
                                 proc_counter <= 0;
                             end
                         endcase
                     end
-                    
-                    
-                    
 
-                    
                 endcase
             end
         end
-    
     end
     
     
