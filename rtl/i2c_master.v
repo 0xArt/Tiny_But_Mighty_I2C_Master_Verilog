@@ -92,11 +92,14 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
     wire sda_oe;
     assign sda_oe = ( (state==S_START) || (state==S_WRITE_ADDR_W) || (state==S_WRITE_REG_ADDR) || (state==S_WRITE_REG_ADDR_MSB) || (state==S_WRITE_REG_DATA) || (state==S_WRITE_REG_DATA_MSB) || (state==S_WRITE_ADDR_R) || (state==S_SEND_NACK) || (state==S_SEND_STOP) || (state==S_SEND_ACK) );
     
+    wire scl_oe;
+    //when proc_counter = 1, we check for clock stretching from slave
+    assign scl_oe = (state!=S_IDLE && proc_counter!=1);
+
     //tri state buffer for scl and sdo
-    assign io_scl = (state!=S_IDLE) ? scl_out : 1'bz;
+    assign io_scl = (scl_oe) ? scl_out : 1'bz;
     assign io_sda = (sda_oe) ? sda_out : 1'bz;
 
-    
     
     reg [15:0] divider_counter = 0;
     wire divider_tick;
@@ -175,7 +178,7 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 scl_out <= 0;
                                 proc_counter <= 0;
                                 state <= post_state;
-                                sda_out <= saved_device_addr[7];
+                                sda_out <= saved_device_addr[ADDR_WIDTH];
                             end
                         endcase
                     end
@@ -187,7 +190,9 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 scl_out <= 0;
@@ -196,13 +201,12 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                             end
                             3: begin
                                 if(bit_counter == 0)begin
+                                    post_sda_out <= saved_reg_addr[REG_WIDTH-1];
                                     if(REG_WIDTH == 16)begin
                                         post_state <= S_WRITE_REG_ADDR_MSB;
-                                        post_sda_out <= saved_reg_addr[15];
                                     end
                                     else begin
                                         post_state <= S_WRITE_REG_ADDR;
-                                        post_sda_out <= saved_reg_addr[7];
                                     end
                                     state <= S_CHECK_ACK;
                                     bit_counter <= 8;
@@ -222,8 +226,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                                ack_recieved <= 0;
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    ack_recieved <= 0;
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 scl_out <= 0;
@@ -253,7 +259,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    ack_recieved <= 0;
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 scl_out <= 0;
@@ -283,7 +292,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    ack_recieved <= 0;
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 scl_out <= 0;
@@ -325,7 +337,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                               proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    ack_recieved <= 0;
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 scl_out <= 0;
@@ -355,7 +370,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    ack_recieved <= 0;
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 scl_out <= 0;
@@ -406,7 +424,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    ack_recieved <= 0;
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 scl_out <= 0;
@@ -441,7 +462,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    ack_recieved <= 0;
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 scl_out <= 0; 
@@ -469,7 +493,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    ack_recieved <= 0;
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 scl_out <= 0; 
@@ -495,7 +522,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    ack_recieved <= 0;
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 proc_counter <= 3;
