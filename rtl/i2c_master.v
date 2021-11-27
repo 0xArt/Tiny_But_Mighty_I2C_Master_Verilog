@@ -519,6 +519,7 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                         case(proc_counter)
                             0:begin
                                 scl_out <= 1;
+                                sda_out <= 1;
                                 proc_counter <= 1;
                             end
                             1: begin
@@ -547,7 +548,9 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 sda_out <= 0;
                             end
                             1: begin
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 proc_counter <= 3;
@@ -567,7 +570,9 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
                                 proc_counter <= 1;
                             end
                             1: begin
-                                proc_counter <= 2;
+                                if(io_scl == 1)begin
+                                    proc_counter <= 2;
+                                end
                             end
                             2: begin
                                 proc_counter <= 3;
