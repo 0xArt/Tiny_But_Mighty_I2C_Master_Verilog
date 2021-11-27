@@ -156,7 +156,7 @@ module i2c_master_tb(
                 else begin
                     $display("Read back incorrect data!");
                 end
-                proc_cntr <= proc_cntr + 1;
+                $stop;
             end
             11: begin
                 //do nothing
