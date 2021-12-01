@@ -90,11 +90,10 @@ i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
     reg rw = 0;
     
     wire sda_oe;
-    assign sda_oe = ( (state==S_START) || (state==S_WRITE_ADDR_W) || (state==S_WRITE_REG_ADDR) || (state==S_WRITE_REG_ADDR_MSB) || (state==S_WRITE_REG_DATA) || (state==S_WRITE_REG_DATA_MSB) || (state==S_WRITE_ADDR_R) || (state==S_SEND_NACK) || (state==S_SEND_STOP) || (state==S_SEND_ACK) );
-    
+    assign sda_oe = (state!=S_IDLE && state!=S_CHECK_ACK && state!=S_READ_REG && state!=S_READ_REG_MSB);
     wire scl_oe;
     //when proc_counter = 1, we check for clock stretching from slave
-    assign scl_oe = (state!=S_IDLE && proc_counter!=1);
+    assign scl_oe = (state!=S_IDLE && proc_counter!=1 && proc_counter!=2);
 
     //tri state buffer for scl and sdo
     assign io_scl = (scl_oe) ? scl_out : 1'bz;
