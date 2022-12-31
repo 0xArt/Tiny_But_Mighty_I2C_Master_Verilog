@@ -34,7 +34,7 @@ module i2c_master#(
             input       [REG_WIDTH-1:0]     i_reg_addr,
             input       [ADDR_WIDTH-1:0]    i_device_addr,
             input  wire [15:0]              i_divider,
-            output reg  [DATA_WIDTH-1:0]     o_miso_data = 0,
+            output reg  [DATA_WIDTH-1:0]    o_miso_data = 0,
             output reg                      o_busy = 0,
             inout                           io_sda,
             inout                           io_scl

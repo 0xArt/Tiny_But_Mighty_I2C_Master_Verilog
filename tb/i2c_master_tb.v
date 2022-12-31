@@ -22,35 +22,35 @@
 module i2c_master_tb(
 
     );
-	 
-	 
+
+
     real clockDelay50 = ((1/ (50e6))/2)*(1e9);
     reg main_clk = 0;
     reg rst = 1;
-		 
+
     //clock gen
-	always begin
-	  #clockDelay50;
-	  main_clk = ~main_clk;
-	end
+    always begin
+      #clockDelay50;
+      main_clk = ~main_clk;
+    end
 
     wire scl;
     wire sda;
-	 
-	pullup p1(scl); // pullup scl line
-	pullup p2(sda); // pullup sda line
-	
-	reg enable = 0;
-	reg rw = 0;
-	reg [7:0] mosi = 0;
-	reg [7:0] reg_addr = 0;
+
+    pullup p1(scl); // pullup scl line
+    pullup p2(sda); // pullup sda line
+
+    reg enable = 0;
+    reg rw = 0;
+    reg [7:0] mosi = 0;
+    reg [7:0] reg_addr = 0;
     reg [6:0] device_addr = 7'b001_0001;       
     reg [15:0] divider = 16'h0003;
     
     wire [7:0] miso;
     wire       busy;
 
-	i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7)) 
+    i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
         i2c_master_inst(
             .i_clk(main_clk),
             .i_rst(rst),
@@ -65,19 +65,19 @@ module i2c_master_tb(
             .io_sda(sda),
             .io_scl(scl)
     );
-	 
-	 
+
+
     i2c_slave i2c_slave_model_inst(
         .scl(scl),
         .sda(sda)
     );
-		
+
 
     reg  [7:0] read_data = 0;
     wire [7:0] data_to_write = 8'hDC;
-    reg  [7:0] proc_cntr = 0;	 
+    reg  [7:0] proc_cntr = 0;
 
-	always@(posedge main_clk)begin
+    always@(posedge main_clk)begin
         if(proc_cntr < 20 && proc_cntr > 5)begin
             proc_cntr <= proc_cntr + 1;
         end
@@ -163,7 +163,7 @@ module i2c_master_tb(
             end
 
         endcase 
-	
-	end
+
+    end
 
 endmodule
