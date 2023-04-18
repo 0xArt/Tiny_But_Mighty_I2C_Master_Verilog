@@ -30,9 +30,9 @@ module i2c_master#(
     input                               reset,
     input                               enable,
     input                               read_write,
-    input       [DATA_WIDTH-1:0]        i_mosi_data,
-    input       [REGISTER_WIDTH-1:0]    i_reg_addr,
-    input       [ADDR_WIDTH-1:0]        i_device_addr,
+    input       [DATA_WIDTH-1:0]        mosi_data,
+    input       [REGISTER_WIDTH-1:0]    register_address,
+    input       [ADDR_WIDTH-1:0]        device_address,
     input  wire [15:0]                  divider,
     output reg  [DATA_WIDTH-1:0]        miso_data,
     output reg                          o_busy = 0,
@@ -154,11 +154,47 @@ always_comb begin
         case (state)
 
             S_IDLE: begin
-                _process_counter   = 0;
-                _bit_counter       = 0;
-                _last_acknowledge  = 0;
-                _saved_read_write  = rw;
+                _process_counter        =   0;
+                _bit_counter            =   0;
+                _last_acknowledge       =   0;
+                _saved_read_write       =   read_write;
+                _busy                   =   0;
+                _saved_register_address =   register_address;
+                _saved_device_address   =   device_address;
+                _saved_mosi_data        =   mosi_data;
+                _sda                    =   0;
+                _scl                    =   0;
+                if (enable) begin
+                    _state      =   S_START;
+                    _post_state =   S_WRITE_ADDR_W;
+                end
+            end
 
+            S_START: begin
+                case (process_counter) begin
+                    0: begin
+                        _busy               =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        _serial_data        =   0;
+                        _process_counter    =   2;
+                    end
+                    2:  begin
+                        _bit_counter        =   8;
+                        _process_counter    =   3;
+                    end
+                    3:  begin
+                        _serial_clock       =   0;
+                        _process_counter    =   0;
+                        _state              =   post_state;
+                        _serial_data        =   saved_device_address[ADDR_WIDTH];
+                    end
+                endcase
+                end
+            end
+
+            S_WRITE_ADDR_W: begin
 
             end
 
@@ -186,478 +222,5 @@ always_ff @(posedge clock) begin
         saved_read_write <= _saved_read_write;
     end
  end
-
-
-    always@(posedge clock)begin
-        if(reset)begin
-            sda_out <= 1;
-            scl_out <= 1;
-            proc_counter <= 0;
-            bit_counter <= 0;
-            ack_recieved <= 0;
-            o_miso_data <= 0;
-            saved_device_addr <= 0;
-            saved_reg_addr <= 0;
-            saved_mosi_data <= 0;
-            enable <= 0;
-            o_busy <= 0;
-            rw <= 0;
-            post_state <= S_IDLE;
-            state <= S_IDLE;
-        end
-        else begin
-            if(divider_tick)begin
-                case(state)
-                    S_IDLE: begin
-                        proc_counter <= 0;
-                        sda_out <= 1;
-                        scl_out <= 1;
-                        enable_delay      <= enable;
-                        saved_device_addr <= {i_device_addr, 1'b0};
-                        saved_reg_addr <= i_reg_addr;
-                        saved_mosi_data <= i_mosi_data;
-                        o_busy <= 0;
-                        ack_recieved <= 0;
-                        rw <= i_rw;
-                        if(enable_delay)begin
-                            state <= S_START;
-                            post_state <= S_WRITE_ADDR_W;
-                        end
-                    end
-                    
-                    S_START: begin
-                        case(proc_counter)
-                            0: begin
-                                proc_counter <= 1;
-                                o_busy <= 1;
-                                enable <= 0;
-                            end
-                            1: begin
-                                sda_out <= 0;
-                                proc_counter <= 2;
-                            end
-                            2: begin
-                                proc_counter <= 3;
-                                bit_counter <= 8;
-                            end
-                            3: begin
-                                scl_out <= 0;
-                                proc_counter <= 0;
-                                state <= post_state;
-                                sda_out <= saved_device_addr[ADDR_WIDTH];
-                            end
-                        endcase
-                    end
-                    
-                    S_WRITE_ADDR_W: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                scl_out <= 0;
-                                bit_counter <= bit_counter -1;
-                                proc_counter <= 3;
-                            end
-                            3: begin
-                                if(bit_counter == 0)begin
-                                    post_sda_out <= saved_reg_addr[REG_WIDTH-1];
-                                    if(REG_WIDTH == 16)begin
-                                        post_state <= S_WRITE_REG_ADDR_MSB;
-                                    end
-                                    else begin
-                                        post_state <= S_WRITE_REG_ADDR;
-                                    end
-                                    state <= S_CHECK_ACK;
-                                    bit_counter <= 8;
-                                end
-                                else begin
-                                  sda_out <= saved_device_addr[bit_counter-1];
-                                end
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_CHECK_ACK: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    ack_recieved <= 0;
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                scl_out <= 0;
-                                if(io_sda == 0)begin
-                                    ack_recieved <= 1;
-                                end
-                                proc_counter <= 3;
-                            end
-                            3: begin
-                                if(ack_recieved)begin
-                                    state <= post_state;
-                                    ack_recieved <= 0;
-                                    sda_out <= post_sda_out;
-                                end
-                                else begin
-                                    state <= S_IDLE;
-                                end
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_WRITE_REG_ADDR_MSB: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    ack_recieved <= 0;
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                scl_out <= 0;
-                                bit_counter <= bit_counter -1;
-                                proc_counter <= 3;
-                            end
-                            3: begin
-                                if(bit_counter == 0)begin
-                                    post_state <= S_WRITE_REG_ADDR;
-                                    post_sda_out <= saved_reg_addr[7];
-                                    bit_counter <= 8; 
-                                    sda_out <= 0;
-                                    state <= S_CHECK_ACK;
-                                end
-                                else begin
-                                  sda_out <= saved_reg_addr[bit_counter+7];
-                                end
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_WRITE_REG_ADDR: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    ack_recieved <= 0;
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                scl_out <= 0;
-                                bit_counter <= bit_counter -1;
-                                proc_counter <= 3;
-                            end
-                            3: begin
-                                if(bit_counter == 0)begin
-                                    if(rw == 0)begin
-                                        if(DATA_WIDTH == 16)begin
-                                            post_state <= S_WRITE_REG_DATA_MSB;
-                                            post_sda_out <= saved_mosi_data[15];
-                                        end
-                                        else begin
-                                            post_state <= S_WRITE_REG_DATA;
-                                            post_sda_out <= saved_mosi_data[7];
-                                        end
-                                    end
-                                    else begin
-                                        post_state <= S_RESTART;
-                                        post_sda_out <= 1;
-                                    end
-                                    bit_counter <= 8; 
-                                    sda_out <= 0;
-                                    state <= S_CHECK_ACK;
-                                end
-                                else begin
-                                    sda_out <= saved_reg_addr[bit_counter-1];
-                                end
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_WRITE_REG_DATA_MSB: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    ack_recieved <= 0;
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                scl_out <= 0;
-                                bit_counter <= bit_counter -1;
-                                proc_counter <= 3;
-                            end
-                            3: begin
-                                if(bit_counter == 0)begin
-                                    state <= S_CHECK_ACK;
-                                    post_state <= S_WRITE_REG_DATA;
-                                    post_sda_out <= saved_mosi_data[7];
-                                    bit_counter <= 8; 
-                                    sda_out <= 0;
-                                end
-                                else begin
-                                    sda_out <= saved_mosi_data[bit_counter+7];
-                                end
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_WRITE_REG_DATA: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    ack_recieved <= 0;
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                scl_out <= 0;
-                                bit_counter <= bit_counter -1;
-                                proc_counter <= 3;
-                            end
-                            3: begin
-                                if(bit_counter == 0)begin
-                                    state <= S_CHECK_ACK;
-                                    post_state <= S_SEND_STOP;
-                                    post_sda_out <= 0;
-                                    bit_counter <= 8; 
-                                    sda_out <= 0;
-                                end
-                                else begin
-                                    sda_out <= saved_mosi_data[bit_counter-1];
-                                end
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_RESTART: begin
-                        case(proc_counter)
-                            0:begin
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                proc_counter <= 2;
-                                scl_out <= 1;
-                            end
-                            2: begin
-                                proc_counter <= 3;
-                            end
-                            3: begin
-                                state <= S_START;
-                                post_state <= S_WRITE_ADDR_R;
-                                saved_device_addr[0] <= 1'b1;
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_WRITE_ADDR_R: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    ack_recieved <= 0;
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                scl_out <= 0;
-                                bit_counter <= bit_counter -1;
-                                proc_counter <= 3;
-                            end
-                            3: begin
-                                if(bit_counter == 0)begin
-                                    if(DATA_WIDTH == 16)begin
-                                        post_state <= S_READ_REG_MSB;
-                                        post_sda_out <= 0;
-                                    end
-                                    else begin
-                                        post_state <= S_READ_REG;
-                                        post_sda_out <= 0;
-                                    end
-                                    state <= S_CHECK_ACK;
-                                    bit_counter <= 8;
-                                end
-                                else begin
-                                  sda_out <= saved_device_addr[bit_counter-1];
-                                end
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_READ_REG_MSB: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    ack_recieved <= 0;
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                scl_out <= 0; 
-                                //sample data on this rising edge of scl
-                                o_miso_data[bit_counter+7] <= io_sda;
-                                bit_counter <= bit_counter -1;
-                                proc_counter <= 3;
-                            end
-                            3: begin
-                                if(bit_counter == 0)begin
-                                    post_state <= S_READ_REG;
-                                    state <= S_SEND_ACK;
-                                    bit_counter <= 8;
-                                    sda_out <= 0;
-                                end
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_READ_REG: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    ack_recieved <= 0;
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                scl_out <= 0; 
-                                //sample data on this rising edge of scl
-                                o_miso_data[bit_counter-1] <= io_sda;
-                                bit_counter <= bit_counter -1;
-                                proc_counter <= 3;
-                            end
-                            3: begin
-                                if(bit_counter == 0)begin
-                                    state <= S_SEND_NACK;
-                                    sda_out <= 1;
-                                end
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_SEND_NACK: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                sda_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    ack_recieved <= 0;
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                proc_counter <= 3;
-                                scl_out <= 0;
-                            end
-                            3: begin
-                                state <= S_SEND_STOP;
-                                proc_counter <= 0;
-                                sda_out <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_SEND_ACK: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                                sda_out <= 0;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                proc_counter <= 3;
-                                scl_out <= 0;
-                            end
-                            3: begin
-                                state <= post_state;
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-                    
-                    S_SEND_STOP: begin
-                        case(proc_counter)
-                            0:begin
-                                scl_out <= 1;
-                                proc_counter <= 1;
-                            end
-                            1: begin
-                                if(io_scl == 1)begin
-                                    proc_counter <= 2;
-                                end
-                            end
-                            2: begin
-                                proc_counter <= 3;
-                                sda_out <= 1;
-                            end
-                            3: begin
-                                state <= S_IDLE;
-                                proc_counter <= 0;
-                            end
-                        endcase
-                    end
-
-                endcase
-            end
-        end
-    end
-    
-//tri state buffer for scl and sdo
-assign io_scl = (serial_clock_enable) ? serial_clock : 1'bz;
-assign io_sda = (serial_data_enable)  ? serial_data  : 1'bz;
     
 endmodule
