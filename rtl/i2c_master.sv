@@ -36,8 +36,8 @@ module i2c_master#(
     input  wire [15:0]                  divider,
     output reg  [DATA_WIDTH-1:0]        miso_data,
     output reg                          o_busy = 0,
-    inout                               io_sda,
-    inout                               io_scl
+    inout                               external_serial_data,
+    inout                               external_serial_clock
 );
 
  /*INSTANTATION TEMPLATE
@@ -191,13 +191,158 @@ always_comb begin
                         _serial_data        =   saved_device_address[ADDR_WIDTH];
                     end
                 endcase
+            end
+            S_WRITE_ADDR_W: begin
+                case (process_counter) begin
+                    0: begin
+                        _serial_clock       =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock == 1) begin
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _serial_clock       =   0;
+                        _bit_counter        =   bit_counter -   1;
+                        _process_counter    =   3;
+                    end
+                    3: begin
+                        if (bit_counter == 0) begin
+                            _post_serial_data   =   saved_register_address[REGISTER_WIDTH-1];
+
+                            if( REGISTER_WIDTH == 16) begin
+                                _post_state =   S_WRITE_REG_ADDR_MSB;
+                            end
+                            else begin
+                                _post_state =   S_WRITE_REG_ADDR;
+                            end
+
+                            _state          =   S_CHECK_ACK;
+                            _bit_counter    =   8;
+                        end
+                        else begin
+                            _serial_data    =   saved_device_address[bit_counter-1];
+                        end
+                        _process_counter    =   0;
+                    end
                 end
             end
+            S_CHECK_ACK: begin
+                case (process_counter)
+                    0: begin
+                        _serial_clock       =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock == 1) begin
+                            _last_acknowledge   =   0;
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _serial_clock   =   0;
 
-            S_WRITE_ADDR_W: begin
-
+                        if (external_serial_data == 0) begin
+                            _last_acknowledge   =   1;
+                        end
+                        _process_counter    =   3;
+                    end
+                    3:  begin
+                        if (last_acknowledge == 1) begin
+                            _last_acknowledge   =   0;
+                            _serial_data        =   post_serial_data;
+                            _state              =   post_state;
+                        end
+                        else begin
+                            _state  =   S_IDLE;
+                        end
+                        _process_counter =   0;
+                    end
+                endcase
             end
+            S_WRITE_REG_ADDR_MSB: begin
+                case (process_counter)
+                    0: begin
+                        _serial_clock_out   =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock == 1) begin
+                            _last_acknowledge   =   0;
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _serial_clock       =   0;
+                        _bit_counter        =   bit_counter - 1;
+                        _process_counter    =   3;
+                    end
+                    3: begin
+                        if (bit_counter == 0) begin
+                            _post_state         =   S_WRITE_REG_ADDR;
+                            _post_serial_data   =   saved_register_address[7];
+                            _bit_counter        =   8;
+                            _serial_data        =   0;
+                            _state              =   S_CHECK_ACK;
+                        end
+                        else begin
+                            _serial_data        =   saved_register_address[bit_counter+7];
+                        end
+                        _process_counter        =   0;
+                    end
+                endcase
+            end
+            S_WRITE_REG_ADDR: begin
+                case (process_counter) begin
+                    0: begin
+                        _serial_clock       =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock == 1) begin
+                            _last_acknowledge   =   0;
+                            _process_counter    =   0;
+                        end
+                    end
+                    2: begin
+                        _serial_clock       =   0;
+                        _bit_counter        =   bit_counter - 1;
+                        _process_counter    =   3;
+                    end
+                    3: begin
+                        if (bit_counter == 0) begin
+                            if (read_write == 0) begin
+                                if (DATA_WIDTH == 16) begin
+                                    _post_state         =   S_WRITE_REG_DATA_MSB;
+                                    _post_serial_data   =   saved_mosi_data[15];
+                                end
+                                else begin
+                                    _post_state         =   S_WRITE_REG_DATA_MSB;
+                                    post_sda_out        =   saved_mosi_data[7];
+                                end
+                            end
+                            else begin
+                                _post_state         =   S_RESTART;
+                                _post_serial_data   =   1;
+                            end
+                            _bit_counter    =   8;
+                            _serial_data    =   0;
+                            _state          =   S_CHECK_ACK;
+                        end
+                        else begin
+                            _serial_data    =   saved_register_address[bit_counter-1];
+                        end
+                        _process_counter    =   0;
+                    end
+                endcase
+            end
+            S_WRITE_REG_DATA_MSB: begin
+                case (process_counter) begin
 
+                end
+            end
         endcase
 
     end
