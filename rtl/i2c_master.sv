@@ -19,107 +19,116 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-
-
 module i2c_master#(
     parameter DATA_WIDTH      = 8,
     parameter REGISTER_WIDTH  = 8,
-    parameter ADDR_WIDTH      = 7
+    parameter ADDRESS_WIDTH   = 7
 )(
-    input                               clock,
-    input                               reset,
-    input                               enable,
-    input                               read_write,
-    input       [DATA_WIDTH-1:0]        mosi_data,
-    input       [REGISTER_WIDTH-1:0]    register_address,
-    input       [ADDR_WIDTH-1:0]        device_address,
-    input  wire [15:0]                  divider,
-    output reg  [DATA_WIDTH-1:0]        miso_data,
-    output reg                          o_busy = 0,
-    inout                               external_serial_data,
-    inout                               external_serial_clock
+    input   wire                            clock,
+    input   wire                            reset,
+    input   wire                            enable,
+    input   wire                            read_write,
+    input   wire    [DATA_WIDTH-1:0]        mosi_data,
+    input   wire    [REGISTER_WIDTH-1:0]    register_address,
+    input   wire    [ADDRESS_WIDTH-1:0]     device_address,
+    input   wire    [15:0]                  divider,
+    output  reg     [DATA_WIDTH-1:0]        miso_data,
+    output  reg                             busy,
+    inout                                   external_serial_data,
+    inout                                   external_serial_clock
 );
 
  /*INSTANTATION TEMPLATE
-i2c_master #(.DATA_WIDTH(8),.REG_WIDTH(8),.ADDR_WIDTH(7))
+i2c_master #(.DATA_WIDTH(8),.REGISTER_WIDTH(8),.ADDRESS_WIDTH(7))
         i2c_master_inst(
             .clock(),
             .reset(),
             .enable(),
-            .i_rw(),
-            .i_mosi_data(),
-            .i_reg_addr(),
-            .i_device_addr(),
-            .i_divider(),
-            .o_miso_data(),
-            .o_busy(),
-            .io_sda(),
-            .io_scl()
+            .read_write(),
+            .mosi_data(),
+            .register_address(),
+            .device_address(),
+            .divider(),
+            .miso_data(),
+            .busy(),
+            .external_serial_data(),
+            .external_serial_clock()
         );
 */
 
-    localparam S_IDLE                =       8'h00;
-    localparam S_START               =       8'h01;
-    localparam S_WRITE_ADDR_W        =       8'h02;
-    localparam S_CHECK_ACK           =       8'h03;
-    localparam S_WRITE_REG_ADDR      =       8'h04;
-    localparam S_RESTART             =       8'h05;
-    localparam S_WRITE_ADDR_R        =       8'h06;
-    localparam S_READ_REG            =       8'h07;
-    localparam S_SEND_NACK           =       8'h08;
-    localparam S_SEND_STOP           =       8'h09;
-    localparam S_WRITE_REG_DATA      =       8'h0A;
-    localparam S_WRITE_REG_ADDR_MSB  =       8'h0B;
-    localparam S_WRITE_REG_DATA_MSB  =       8'h0C;
-    localparam S_READ_REG_MSB        =       8'h0D;
-    localparam S_SEND_ACK            =       8'h0E;
+typedef enum
+{
+    S_IDLE,
+    S_START,
+    S_WRITE_ADDR_W,
+    S_CHECK_ACK,
+    S_WRITE_REG_ADDR,
+    S_RESTART,
+    S_WRITE_ADDR_R,
+    S_READ_REG,
+    S_SEND_NACK,
+    S_SEND_STOP,
+    S_WRITE_REG_DATA,
+    S_WRITE_REG_ADDR_MSB,
+    S_WRITE_REG_DATA_MSB,
+    S_READ_REG_MSB,
+    S_SEND_ACK
+} state_type;
 
-    reg                       serial_clock;
-    reg                       _serial_clock;
-    reg [7:0]                 state;
-    reg                       _state;
-    reg [7:0]                 post_state;
-    reg [7:0]                 _post_state;
-    reg [ADDR_WIDTH:0]        saved_device_address;
-    reg [ADDR_WIDTH:0]        _saved_device_address;
-    reg [REGISTER_WIDTH-1:0]  saved_register_address;
-    reg [REGISTER_WIDTH-1:0]  _saved_register_address;
-    reg [DATA_WIDTH-1:0]      saved_mosi_data;
-    reg [DATA_WIDTH-1:0]      _saved_mosi_data;
-    reg [1:0]                 process_counter;
-    reg [1:0]                 _process_counter;
-    reg [7:0]                 bit_counter;
-    reg [7:0]                 _bit_counter;
-    reg                       serial_data;
-    reg                       _serial_data;
-    reg                       post_serial_data;
-    reg                       _post_serial_data;
-    reg                       last_acknowledge;
-    reg                       _last_acknowledge;
-    reg                       enable_delay;
-    reg                       _enable_delay;
-    reg                       _saved_read_write;
-    reg                       saved_read_write;
-    reg                       serial_data_enable;
-    reg [15:0]                divider_counter;
-    reg [15:0]                _divider_counter;
-    reg                       divider_tick;
-    reg [DATA_WIDTH-1:0]      _miso_data;
+state_type                      state;
+state_type                      _state;
+state_type                      post_state;
+state_type                      _post_state;
 
-    wire sda_oe;
-    assign sda_oe = (state!=S_IDLE && state!=S_CHECK_ACK && state!=S_READ_REG && state!=S_READ_REG_MSB);
-    wire scl_oe;
-    //when proc_counter = 1, we check for clock stretching from slave
-    assign scl_oe = (state!=S_IDLE && proc_counter!=1 && proc_counter!=2);
+reg                             serial_clock;
+logic                           _serial_clock;
+reg     [ADDRESS_WIDTH:0]       saved_device_address;
+logic   [ADDRESS_WIDTH:0]       _saved_device_address;
+reg     [REGISTER_WIDTH-1:0]    saved_register_address;
+logic   [REGISTER_WIDTH-1:0]    _saved_register_address;
+reg     [DATA_WIDTH-1:0]        saved_mosi_data;
+logic   [DATA_WIDTH-1:0]        _saved_mosi_data;
+reg     [1:0]                   process_counter;
+logic   [1:0]                   _process_counter;
+reg     [7:0]                   bit_counter;
+logic   [7:0]                   _bit_counter;
+reg                             serial_data;
+logic                           _serial_data;
+reg                             post_serial_data;
+logic                           _post_serial_data;
+reg                             last_acknowledge;
+logic                           _last_acknowledge;
+logic                           _saved_read_write;
+reg                             saved_read_write;
+reg     [15:0]                  divider_counter;
+logic   [15:0]                  _divider_counter;
+reg                             divider_tick;
+logic   [DATA_WIDTH-1:0]        _miso_data;
+logic                           serial_data_output_enable;
+logic                           serial_clock_output_enable;
 
 
-
-
-//i2c divider tick geneartor
+assign external_serial_clock    =   (serial_clock_output_enable)  ?   serial_clock  :   1'bz;
+assign external_serial_data     =   (serial_data_output_enable)   ?   serial_data   :   1'bz;
 
 always_comb begin
-    _divider_counter     = divider_counter;
-    divider_tick         = 0;
+    _state                  =   state;
+    _post_state             =   post_state;
+    _process_counter        =   process_counter;
+    _bit_counter            =   bit_counter;
+    _last_acknowledge       =   last_acknowledge;
+    _miso_data              =   miso_data;
+    _saved_read_write       =   saved_read_write;
+    _busy                   =   busy;
+    _divider_counter        =   divider_counter;
+    _saved_register_address =   saved_register_address;
+    _saved_device_address   =   saved_device_address;
+    _saved_mosi_data        =   saved_mosi_data;
+    _serial_data            =   serial_data;
+    _serial_clock           =   serial_clock;
+    _post_serial_data       =   post_serial_data;
+    divider_tick            =   0;
+
     if (divider_counter == divider) begin
         _divider_counter = 0;
         divider_tick     = 1;
@@ -127,27 +136,20 @@ always_comb begin
     else begin
         _divider_counter = divider_counter + 1;
     end
-end
 
-always_ff@(posedge clock)begin
-    if(reset)begin
-        divider_counter <= 0;
+    if (state!=S_IDLE && state!=S_CHECK_ACK && state!=S_READ_REG && state!=S_READ_REG_MSB) begin
+        serial_data_output_enable   =   1;
     end
     else begin
-        divider_counter <= _divider_counter;
+        serial_data_output_enable   =   0;
     end
-end
 
-
-always_comb begin
-    _state               = state;
-    _post_state          = post_state;
-    _process_counter     = process_counter;
-    _bit_counter         = bit_counter;
-    _last_acknowledge    = last_acknowledge;
-    _miso_data           = miso_data;
-    _saved_read_write    = saved_read_write;
-
+    if (state!=S_IDLE && proc_counter!=1 && proc_counter!=2) begin
+        serial_clock_output_enable   =   1;
+    end
+    else begin
+        serial_clock_output_enable   =   0;
+    end
 
     if (divider_tick) begin
 
@@ -187,7 +189,7 @@ always_comb begin
                         _serial_clock       =   0;
                         _process_counter    =   0;
                         _state              =   post_state;
-                        _serial_data        =   saved_device_address[ADDR_WIDTH];
+                        _serial_data        =   saved_device_address[ADDRESS_WIDTH];
                     end
                 endcase
             end
@@ -590,20 +592,37 @@ end
 
 always_ff @(posedge clock) begin
     if (reset) begin
-        state            <= S_IDLE;
-        post_state       <= S_IDLE;
-        process_counter  <= 0;
-        last_acknowledge <= 0;
-        miso_data        <= 0;
-        saved_read_write <= 0;
+        state                   <=  S_IDLE;
+        post_state              <=  S_IDLE;
+        process_counter         <=  0;
+        bit_counter             <=  0;
+        last_acknowledge        <=  0;
+        miso_data               <=  0;
+        saved_read_write        <=  0;
+        divider_counter         <=  0;
+        saved_device_address    <=  0;
+        saved_register_address  <=  0;
+        saved_mosi_data         <=  0;
+        serial_clock            <=  0;
+        serial_data             <=  0;
+        saved_mosi_data         <=  0;
+        post_serial_data        <=  0;
     end
     else begin
-        state            <= _state;
-        post_state       <= _post_state;
-        process_counter  <= _process_counter;
-        last_acknowledge <= _last_acknowledge;
-        miso_data        <= _miso_data;
-        saved_read_write <= _saved_read_write;
+        state                   <=  _state;
+        post_state              <=  _post_state;
+        process_counter         <=  _process_counter;
+        bit_counter             <=  _bit_counter;
+        last_acknowledge        <=  _last_acknowledge;
+        miso_data               <=  _miso_data;
+        saved_read_write        <=  _saved_read_write;
+        divider_counter         <=  _divider_counter;
+        saved_device_address    <=  _saved_device_address;
+        saved_register_address  <=  _saved_register_address;
+        saved_mosi_data         <=  _saved_mosi_data;
+        serial_clock            <=  _serial_clock;
+        serial_data             <=  _serial_data;
+        post_serial_data        <=  post_serial_data;
     end
  end
     
