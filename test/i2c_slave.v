@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 /////////////////////////////////////////////////////////////////////
 ////                                                             ////
 ////  WISHBONE rev.B2 compliant synthesizable I2C Slave model    ////
