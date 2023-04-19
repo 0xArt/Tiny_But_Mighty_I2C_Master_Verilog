@@ -25,7 +25,7 @@ module i2c_master#(
     parameter ADDRESS_WIDTH   = 7
 )(
     input   wire                            clock,
-    input   wire                            reset,
+    input   wire                            reset_n,
     input   wire                            enable,
     input   wire                            read_write,
     input   wire    [DATA_WIDTH-1:0]        mosi_data,
@@ -41,18 +41,20 @@ module i2c_master#(
  /*INSTANTATION TEMPLATE
 i2c_master #(.DATA_WIDTH(8),.REGISTER_WIDTH(8),.ADDRESS_WIDTH(7))
         i2c_master_inst(
-            .clock(),
-            .reset(),
-            .enable(),
-            .read_write(),
-            .mosi_data(),
-            .register_address(),
-            .device_address(),
-            .divider(),
-            .miso_data(),
-            .busy(),
-            .external_serial_data(),
-            .external_serial_clock()
+            .clock                  (),
+            .reset_n                (),
+            .enable                 (),
+            .read_write             (),
+            .mosi_data              (),
+            .register_address       (),
+            .device_address         (),
+            .divider                (),
+
+            .miso_data              (),
+            .busy                   (),
+
+            .external_serial_data   (),
+            .external_serial_clock  ()
         );
 */
 
@@ -104,6 +106,7 @@ reg     [15:0]                  divider_counter;
 logic   [15:0]                  _divider_counter;
 reg                             divider_tick;
 logic   [DATA_WIDTH-1:0]        _miso_data;
+logic                           _busy;
 logic                           serial_data_output_enable;
 logic                           serial_clock_output_enable;
 
@@ -144,7 +147,7 @@ always_comb begin
         serial_data_output_enable   =   0;
     end
 
-    if (state!=S_IDLE && proc_counter!=1 && proc_counter!=2) begin
+    if (state!=S_IDLE && process_counter!=1 && process_counter!=2) begin
         serial_clock_output_enable   =   1;
     end
     else begin
@@ -158,13 +161,13 @@ always_comb begin
                 _process_counter        =   0;
                 _bit_counter            =   0;
                 _last_acknowledge       =   0;
-                _saved_read_write       =   read_write;
                 _busy                   =   0;
+                _saved_read_write       =   read_write;
                 _saved_register_address =   register_address;
-                _saved_device_address   =   device_address;
+                _saved_device_address   =   {device_address,1'b0};
                 _saved_mosi_data        =   mosi_data;
-                _sda                    =   0;
-                _scl                    =   0;
+                _serial_data            =   1;
+                _serial_clock           =   1;
 
                 if (enable) begin
                     _state      =   S_START;
@@ -172,7 +175,7 @@ always_comb begin
                 end
             end
             S_START: begin
-                case (process_counter) begin
+                case (process_counter)
                     0: begin
                         _busy               =   1;
                         _process_counter    =   1;
@@ -194,7 +197,7 @@ always_comb begin
                 endcase
             end
             S_WRITE_ADDR_W: begin
-                case (process_counter) begin
+                case (process_counter)
                     0: begin
                         _serial_clock       =   1;
                         _process_counter    =   1;
@@ -228,7 +231,7 @@ always_comb begin
                         end
                         _process_counter    =   0;
                     end
-                end
+                endcase
             end
             S_CHECK_ACK: begin
                 case (process_counter)
@@ -266,7 +269,7 @@ always_comb begin
             S_WRITE_REG_ADDR_MSB: begin
                 case (process_counter)
                     0: begin
-                        _serial_clock_out   =   1;
+                        _serial_clock       =   1;
                         _process_counter    =   1;
                     end
                     1: begin
@@ -296,7 +299,7 @@ always_comb begin
                 endcase
             end
             S_WRITE_REG_ADDR: begin
-                case (process_counter) begin
+                case (process_counter)
                     0: begin
                         _serial_clock       =   1;
                         _process_counter    =   1;
@@ -304,7 +307,7 @@ always_comb begin
                     1: begin
                         if (external_serial_clock == 1) begin
                             _last_acknowledge   =   0;
-                            _process_counter    =   0;
+                            _process_counter    =   2;
                         end
                     end
                     2: begin
@@ -320,8 +323,8 @@ always_comb begin
                                     _post_serial_data   =   saved_mosi_data[15];
                                 end
                                 else begin
-                                    _post_state         =   S_WRITE_REG_DATA_MSB;
-                                    post_sda_out        =   saved_mosi_data[7];
+                                    _post_state         =   S_WRITE_REG_DATA;
+                                    _post_serial_data   =   saved_mosi_data[7];
                                 end
                             end
                             else begin
@@ -340,7 +343,7 @@ always_comb begin
                 endcase
             end
             S_WRITE_REG_DATA_MSB: begin
-                case (process_counter) begin
+                case (process_counter)
                     0: begin
                         _serial_data        =   1;
                         _process_counter    =   1;
@@ -369,7 +372,7 @@ always_comb begin
                         end
                         _process_counter        =   0;
                     end
-                end
+                endcase
             end
             S_WRITE_REG_DATA: begin
                 case (process_counter)
@@ -399,8 +402,8 @@ always_comb begin
                         else begin
                             _serial_data        =   saved_mosi_data[bit_counter-1];
                         end
+                        _process_counter        =   0;
                     end
-                    _process_counter            =   0;
                 endcase
             end
             S_RESTART: begin
@@ -543,7 +546,7 @@ always_comb begin
                 endcase
             end
             S_SEND_ACK: begin
-                case (process_counter) begin
+                case (process_counter)
                     0: begin
                         _serial_clock       =   1;
                         _process_counter    =   1;
@@ -562,7 +565,7 @@ always_comb begin
                         _state              =   post_state;
                         _process_counter    =   0;
                     end
-                end
+                endcase
             end
             S_SEND_STOP: begin
                 case (process_counter)
@@ -591,7 +594,7 @@ always_comb begin
 end
 
 always_ff @(posedge clock) begin
-    if (reset) begin
+    if (!reset_n) begin
         state                   <=  S_IDLE;
         post_state              <=  S_IDLE;
         process_counter         <=  0;
@@ -607,6 +610,7 @@ always_ff @(posedge clock) begin
         serial_data             <=  0;
         saved_mosi_data         <=  0;
         post_serial_data        <=  0;
+        busy                    <=  0;
     end
     else begin
         state                   <=  _state;
@@ -622,7 +626,8 @@ always_ff @(posedge clock) begin
         saved_mosi_data         <=  _saved_mosi_data;
         serial_clock            <=  _serial_clock;
         serial_data             <=  _serial_data;
-        post_serial_data        <=  post_serial_data;
+        post_serial_data        <=  _post_serial_data;
+        busy                    <=  _busy;
     end
  end
     
