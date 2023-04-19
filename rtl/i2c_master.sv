@@ -152,7 +152,6 @@ always_comb begin
     if (divider_tick) begin
 
         case (state)
-
             S_IDLE: begin
                 _process_counter        =   0;
                 _bit_counter            =   0;
@@ -164,12 +163,12 @@ always_comb begin
                 _saved_mosi_data        =   mosi_data;
                 _sda                    =   0;
                 _scl                    =   0;
+
                 if (enable) begin
                     _state      =   S_START;
                     _post_state =   S_WRITE_ADDR_W;
                 end
             end
-
             S_START: begin
                 case (process_counter) begin
                     0: begin
@@ -212,7 +211,7 @@ always_comb begin
                         if (bit_counter == 0) begin
                             _post_serial_data   =   saved_register_address[REGISTER_WIDTH-1];
 
-                            if( REGISTER_WIDTH == 16) begin
+                            if (REGISTER_WIDTH == 16) begin
                                 _post_state =   S_WRITE_REG_ADDR_MSB;
                             end
                             else begin
@@ -340,8 +339,248 @@ always_comb begin
             end
             S_WRITE_REG_DATA_MSB: begin
                 case (process_counter) begin
-
+                    0: begin
+                        _serial_data        =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock == 1) begin
+                            _last_acknowledge   =   1;
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _serial_clock       =   0;
+                        _bit_counter        =   bit_counter - 1;
+                        _process_counter    =   3;
+                    end
+                    3: begin
+                        if (bit_counter == 0) begin
+                            _state              =   S_CHECK_ACK;
+                            _post_state         =   S_WRITE_REG_DATA;
+                            _post_serial_data   =   saved_mosi_data[7];
+                            _bit_counter        =   8;
+                            _serial_data        =   0;
+                        end
+                        else begin
+                            _serial_data        =   saved_mosi_data[bit_counter+7];
+                        end
+                        _process_counter        =   0;
+                    end
                 end
+            end
+            S_WRITE_REG_DATA: begin
+                case (process_counter)
+                    0: begin
+                        _serial_clock       =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock == 1) begin
+                            _last_acknowledge   =   0;
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _serial_clock       =   0;
+                        _bit_counter        =   bit_counter - 1;
+                        _process_counter    =   3;
+                    end
+                    3: begin
+                        if (bit_counter == 0) begin
+                            _state              =   S_CHECK_ACK;
+                            _post_state         =   S_SEND_STOP;
+                            _post_serial_data   =   0;
+                            _bit_counter        =   8;
+                            _serial_data        =   0;
+                        end
+                        else begin
+                            _serial_data        =   saved_mosi_data[bit_counter-1];
+                        end
+                    end
+                    _process_counter            =   0;
+                endcase
+            end
+            S_RESTART: begin
+                case (process_counter)
+                    0: begin
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        _process_counter    =   2;
+                        _serial_clock       =   1;
+                    end
+                    2: begin
+                        _process_counter    =   3;
+                    end
+                    3: begin
+                        _state                      =   S_START;
+                        _post_state                 =   S_WRITE_ADDR_R;
+                        _saved_device_address[0]    =   1;
+                        _process_counter            =   0;
+                    end
+                endcase
+            end
+            S_WRITE_ADDR_R: begin
+                case (process_counter)
+                    0: begin
+                        _serial_clock       =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock == 1) begin
+                            _last_acknowledge   =   0;
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _serial_clock       =   0;
+                        _bit_counter        =   bit_counter - 1;
+                        _process_counter    =   3;
+                    end
+                    3: begin
+                        if (bit_counter == 0) begin
+                            if (DATA_WIDTH == 16) begin
+                                _post_state         =   S_READ_REG_MSB;
+                                _post_serial_data   =   0;
+                            end
+                            else begin
+                                _post_state         =   S_READ_REG;
+                                _post_serial_data   =   0;
+                            end
+                            _state          =   S_CHECK_ACK;
+                            _bit_counter    =   8;
+                        end
+                        else begin
+                            _serial_data    =   saved_device_address[bit_counter-1];
+                        end
+                        _process_counter    =   0;
+                    end
+                endcase
+            end
+            S_READ_REG_MSB: begin
+                case (process_counter)
+                    0: begin
+                        _serial_clock       =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock == 1) begin
+                            _last_acknowledge   =   0;
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _serial_clock               =   0;
+                        //sample data on this rising edge of scl
+                        _miso_data[bit_counter+7]   =   external_serial_data;
+                        _bit_counter                =   bit_counter - 1;
+                        _process_counter            =   3;
+                    end
+                    3: begin
+                        if (bit_counter == 0) begin
+                            _post_state     =   S_READ_REG;
+                            _state          =   S_SEND_ACK;
+                            _bit_counter    =   8;
+                            _serial_data    =   0;
+                        end
+                        _process_counter    =   0;
+                    end
+                endcase
+            end
+            S_READ_REG: begin
+                case (process_counter)
+                    0: begin
+                        _serial_clock       =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock) begin
+                            _last_acknowledge   =   0;
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _serial_clock       =   0;
+                        //sample data on this rising edge of scl
+                        _miso_data[bit_counter-1]   =   external_serial_data;
+                        _bit_counter                =   bit_counter - 1;
+                        _process_counter    =   3;
+                    end
+                    3: begin
+                        if (bit_counter == 0) begin
+                            _state          =   S_SEND_NACK;
+                            _serial_data    =   0;
+                        end
+                        _process_counter    =   0;
+                    end
+                endcase
+            end
+            S_SEND_NACK: begin
+                case (process_counter)
+                    0: begin
+                        _serial_clock       =   1;
+                        _serial_data        =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock) begin
+                            _last_acknowledge   =   0;
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _process_counter    =   3;
+                        _serial_clock       =   0;
+                    end
+                    3: begin
+                        _state              =   S_SEND_STOP;
+                        _process_counter    =   0;
+                        _serial_data        =   0;
+                    end
+                endcase
+            end
+            S_SEND_ACK: begin
+                case (process_counter) begin
+                    0: begin
+                        _serial_clock       =   1;
+                        _process_counter    =   1;
+                        _serial_data        =   0;
+                    end
+                    1: begin
+                        if (external_serial_clock) begin
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _process_counter    =   3;
+                        _serial_clock       =   0;
+                    end
+                    3: begin
+                        _state              =   post_state;
+                        _process_counter    =   0;
+                    end
+                end
+            end
+            S_SEND_STOP: begin
+                case (process_counter)
+                    0: begin
+                        _serial_clock       =   1;
+                        _process_counter    =   1;
+                    end
+                    1: begin
+                        if (external_serial_clock == 1) begin
+                            _process_counter    =   2;
+                        end
+                    end
+                    2: begin
+                        _process_counter    =   3;
+                        _serial_data        =   1;
+                    end
+                    3: begin
+                        _state  =   S_IDLE;
+                    end
+                endcase
             end
         endcase
 
