@@ -130,14 +130,14 @@ always_comb begin
     _serial_data            =   serial_data;
     _serial_clock           =   serial_clock;
     _post_serial_data       =   post_serial_data;
-    divider_tick            =   0;
 
     if (divider_counter == divider) begin
-        _divider_counter = 0;
-        divider_tick     = 1;
+        _divider_counter    =   0;
+        divider_tick        =   1;
     end
     else begin
-        _divider_counter = divider_counter + 1;
+        _divider_counter    =   divider_counter + 1;
+        divider_tick        =   0;
     end
 
     if (state!=S_IDLE && state!=S_CHECK_ACK && state!=S_READ_REG && state!=S_READ_REG_MSB) begin

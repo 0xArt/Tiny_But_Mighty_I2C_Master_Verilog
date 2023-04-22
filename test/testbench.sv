@@ -19,42 +19,27 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
-module testbench(
+`timescale 1ns / 1ps
+`include "./case_000/case_000.svh"
+`include "./case_001/case_001.svh"
 
-);
+module testbench;
 
 localparam  DATA_WIDTH      =   8;
 localparam  REGISTER_WIDTH  =   8;
 localparam  ADDRESS_WIDTH   =   7;
 
-real    clockDelay50    = ((1/ (50e6))/2)*(1e9);
-reg     clock           = 0;
-reg     reset_n         = 0;
-
-//clock gen
-always begin
-    #clockDelay50;
-    clock = ~clock;
-end
-
-wire scl;
-wire sda;
-
-pullup p1(scl); // pullup scl line
-pullup p2(sda); // pullup sda line
-
+real            clock_delay_50  = ((1/ (50e6))/2)*(1e9);
+reg             clock           = 0;
+reg             reset_n         = 1;
+wire            scl;
+wire            sda;
 reg             enable          = 0;
 reg             rw              = 0;
-reg     [7:0]   mosi            = 0;
 reg     [7:0]   reg_addr        = 0;
 reg     [6:0]   device_addr     = 7'b001_0001;
 reg     [15:0]  divider         = 16'h0003;
-wire    [7:0]   miso;
-wire            busy;
-
-reg     [7:0]   read_data       = 0;
-reg     [7:0]   data_to_write   = 8'hDC;
-reg     [7:0]   proc_cntr       = 0;
+reg     [7:0]   data_to_write   = 8'h00;
 
 
 wire                            i2c_master_clock;
@@ -78,13 +63,18 @@ i2c_master(
             .register_address       (i2c_master_register_address),
             .device_address         (i2c_master_device_address),
             .divider                (i2c_master_divider),
-
             .miso_data              (i2c_master_miso_data),
             .busy                   (i2c_master_busy),
-
             .external_serial_data   (sda),
             .external_serial_clock  (scl)
 );
+
+
+pullup pullup_scl(scl); // pullup scl line
+
+
+pullup pullup_sda(sda); // pullup sda line
+
 
 i2c_slave i2c_slave(
     .scl(scl),
@@ -92,95 +82,31 @@ i2c_slave i2c_slave(
 );
 
 
+//clock gen
+always begin
+    #clock_delay_50;
+    clock   = ~clock;
+end
 
-    always@(posedge clock)begin
-        if(proc_cntr < 20 && proc_cntr > 5)begin
-            proc_cntr <= proc_cntr + 1;
-        end
-        case (proc_cntr)
-            0: begin
-                reset_n     <= 0;
-                proc_cntr   <= proc_cntr + 1;
-            end
-            1: begin
-                reset_n     <= 1;
-                proc_cntr   <= proc_cntr + 1;
-            end
-            //set configration first
-            2: begin
-                rw            <= 0; //write operation
-                reg_addr      <= 8'h00; //writing to slave register 0
-                data_to_write <= 8'hAC;
-                device_addr   <= 7'b001_0001; //slave address
-                divider       <= 16'hFFFF; //divider value for i2c serial clock
-                proc_cntr     <= proc_cntr + 1;
-            end
-            3: begin
-                //if master is not busy set enable high
-                if(busy == 0)begin
-                    enable      <= 1;
-                    $display("Enabled write");
-                    proc_cntr   <= proc_cntr + 1;
-                end
-            end
-            4: begin
-                //once busy set enable low
-                if(busy == 1)begin
-                    enable      <= 0;
-                    proc_cntr   <= proc_cntr + 1;
-                end
-            end
-            5: begin
-                //as soon as busy is low again an operation has been completed
-                if(busy == 0) begin
-                    proc_cntr <= proc_cntr + 1;
-                    $display("Master done writing");
-                end
-            end
-            20: begin
-                rw          <= 1; //write operation
-                reg_addr    <= 8'h00; //writing to slave register 0
-                mosi        <= data_to_write; //data to be written
-                device_addr <= 7'b001_0001; //slave address
-                divider     <= 16'hFFFF; //divider value for i2c serial clock
-                proc_cntr   <= proc_cntr + 1;
-            end
-            21: begin
-                if(busy == 0)begin
-                    enable      <= 1;
-                    $display    ("Enabled read");
-                    proc_cntr   <= proc_cntr + 1;
-                end
-            end
-            22: begin
-                if(busy == 1)begin
-                    enable <= 0;
-                    proc_cntr <= proc_cntr + 1;
-                end
-            end
-            23: begin
-                if(busy == 0)begin
-                    read_data <= miso;
-                    proc_cntr <= proc_cntr + 1;
-                    $display("Master done reading");
-                end
-            end
-            24: begin
-                if(read_data == data_to_write)begin
-                    $display("Read back correct data!");
-                end
-                else begin
-                    $display("Read back incorrect data!");
-                end
-                $stop;
-            end
-            11: begin
-                //do nothing
-            end
 
-        endcase 
+initial begin
+    @(posedge clock)
+    reset_n = 1;
+    #100;
+    @(posedge clock)
+    reset_n = 0;
+    #100;
+    @(posedge clock)
+    reset_n = 1;
+    #100;
 
-    end
+    $display("Running case 000");
+    case_000();
+    $display("Running case 001");
+    case_001();
+    $display("Tests have finsihed");
+    $stop();
+end
 
 
 assign i2c_master_clock             =   clock;
@@ -191,9 +117,6 @@ assign i2c_master_mosi_data         =   data_to_write;
 assign i2c_master_device_address    =   device_addr;
 assign i2c_master_register_address  =   reg_addr;
 assign i2c_master_divider           =   divider;
-
-assign miso                         =   i2c_master_miso_data;
-assign busy                         =   i2c_master_busy;
 
 
 endmodule
