@@ -62,9 +62,11 @@ i2c_master(
             .mosi_data              (i2c_master_mosi_data),
             .register_address       (i2c_master_register_address),
             .device_address         (i2c_master_device_address),
+
             .divider                (i2c_master_divider),
             .miso_data              (i2c_master_miso_data),
             .busy                   (i2c_master_busy),
+
             .external_serial_data   (sda),
             .external_serial_clock  (scl)
 );
@@ -117,6 +119,5 @@ assign i2c_master_mosi_data         =   data_to_write;
 assign i2c_master_device_address    =   device_addr;
 assign i2c_master_register_address  =   reg_addr;
 assign i2c_master_divider           =   divider;
-
 
 endmodule
