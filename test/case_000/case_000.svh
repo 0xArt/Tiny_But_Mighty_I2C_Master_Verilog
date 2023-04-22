@@ -43,8 +43,8 @@ $display("Master has finsihed writing");
 $display("Reading from address 0");
 $display("Configuring master");
 @(posedge testbench.clock);
-testbench.rw            = 1;            //write operation
-testbench.reg_addr      = 8'h00;        //writing to slave register 0
+testbench.rw            = 1;            //read operation
+testbench.reg_addr      = 8'h00;        //reading from slave register 0
 testbench.data_to_write = 8'h00;
 testbench.device_addr   = 7'b001_0001;  //slave address
 @(posedge testbench.clock);

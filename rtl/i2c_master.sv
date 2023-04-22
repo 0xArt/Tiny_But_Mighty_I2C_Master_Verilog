@@ -154,30 +154,29 @@ always_comb begin
         serial_clock_output_enable   =   0;
     end
 
-    if (divider_tick) begin
+    case (state)
+        S_IDLE: begin
+            _process_counter        =   0;
+            _bit_counter            =   0;
+            _last_acknowledge       =   0;
+            _busy                   =   0;
+            _saved_read_write       =   read_write;
+            _saved_register_address =   register_address;
+            _saved_device_address   =   {device_address,1'b0};
+            _saved_mosi_data        =   mosi_data;
+            _serial_data            =   1;
+            _serial_clock           =   1;
 
-        case (state)
-            S_IDLE: begin
-                _process_counter        =   0;
-                _bit_counter            =   0;
-                _last_acknowledge       =   0;
-                _busy                   =   0;
-                _saved_read_write       =   read_write;
-                _saved_register_address =   register_address;
-                _saved_device_address   =   {device_address,1'b0};
-                _saved_mosi_data        =   mosi_data;
-                _serial_data            =   1;
-                _serial_clock           =   1;
-
-                if (enable) begin
-                    _state      =   S_START;
-                    _post_state =   S_WRITE_ADDR_W;
-                end
+            if (enable) begin
+                _state      =   S_START;
+                _post_state =   S_WRITE_ADDR_W;
+                _busy       =   1;
             end
-            S_START: begin
+        end
+        S_START: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
-                        _busy               =   1;
                         _process_counter    =   1;
                     end
                     1: begin
@@ -196,7 +195,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_WRITE_ADDR_W: begin
+        end
+        S_WRITE_ADDR_W: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -233,7 +234,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_CHECK_ACK: begin
+        end
+        S_CHECK_ACK: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -266,7 +269,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_WRITE_REG_ADDR_MSB: begin
+        end
+        S_WRITE_REG_ADDR_MSB: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -298,7 +303,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_WRITE_REG_ADDR: begin
+        end
+        S_WRITE_REG_ADDR: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -342,7 +349,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_WRITE_REG_DATA_MSB: begin
+        end
+        S_WRITE_REG_DATA_MSB: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_data        =   1;
@@ -374,7 +383,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_WRITE_REG_DATA: begin
+        end
+        S_WRITE_REG_DATA: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -406,7 +417,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_RESTART: begin
+        end
+        S_RESTART: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _process_counter    =   1;
@@ -426,7 +439,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_WRITE_ADDR_R: begin
+        end
+        S_WRITE_ADDR_R: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -463,7 +478,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_READ_REG_MSB: begin
+        end
+        S_READ_REG_MSB: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -493,7 +510,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_READ_REG: begin
+        end
+        S_READ_REG: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -521,7 +540,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_SEND_NACK: begin
+        end
+        S_SEND_NACK: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -545,7 +566,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_SEND_ACK: begin
+        end
+        S_SEND_ACK: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -567,7 +590,9 @@ always_comb begin
                     end
                 endcase
             end
-            S_SEND_STOP: begin
+        end
+        S_SEND_STOP: begin
+            if (divider_tick) begin
                 case (process_counter)
                     0: begin
                         _serial_clock       =   1;
@@ -587,10 +612,8 @@ always_comb begin
                     end
                 endcase
             end
-        endcase
-
-    end
-
+        end
+    endcase
 end
 
 always_ff @(posedge clock) begin

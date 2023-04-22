@@ -27,7 +27,7 @@ $display(" Writing value 8'hDC to address 1");
 $display("Configuring master");
 @(posedge testbench.clock);
 testbench.rw            = 0;            //write operation
-testbench.reg_addr      = 8'h01;        //writing to slave register 0
+testbench.reg_addr      = 8'h01;        //writing to slave register 1
 testbench.data_to_write = 8'hDC;
 testbench.device_addr   = 7'b001_0001;  //slave address
 testbench.divider       = 16'hFFFF;     //divider value for i2c serial clock
@@ -43,8 +43,8 @@ $display("Master has finsihed writing");
 $display("Reading from address 0");
 $display("Configuring master");
 @(posedge testbench.clock);
-testbench.rw            = 1;            //write operation
-testbench.reg_addr      = 8'h01;        //writing to slave register 0
+testbench.rw            = 1;            //read operation
+testbench.reg_addr      = 8'h01;        //reading from slave register 1
 testbench.data_to_write = 8'h00;
 testbench.device_addr   = 7'b001_0001;  //slave address
 @(posedge testbench.clock);

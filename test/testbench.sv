@@ -19,9 +19,9 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
-`timescale 1ns / 1ps
 `include "./case_000/case_000.svh"
 `include "./case_001/case_001.svh"
+
 
 module testbench;
 
@@ -82,7 +82,7 @@ i2c_slave i2c_slave(
 );
 
 
-//clock gen
+//clock generation
 always begin
     #clock_delay_50;
     clock   = ~clock;
