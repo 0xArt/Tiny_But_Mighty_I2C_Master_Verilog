@@ -32,8 +32,10 @@ module i2c_master#(
     input   wire    [REGISTER_WIDTH-1:0]    register_address,
     input   wire    [ADDRESS_WIDTH-1:0]     device_address,
     input   wire    [15:0]                  divider,
+
     output  reg     [DATA_WIDTH-1:0]        miso_data,
     output  reg                             busy,
+
     inout                                   external_serial_data,
     inout                                   external_serial_clock
 );
@@ -60,21 +62,21 @@ i2c_master #(.DATA_WIDTH(8),.REGISTER_WIDTH(8),.ADDRESS_WIDTH(7))
 
 typedef enum
 {
-    S_IDLE,
-    S_START,
-    S_WRITE_ADDR_W,
-    S_CHECK_ACK,
-    S_WRITE_REG_ADDR,
-    S_RESTART,
-    S_WRITE_ADDR_R,
-    S_READ_REG,
-    S_SEND_NACK,
-    S_SEND_STOP,
-    S_WRITE_REG_DATA,
-    S_WRITE_REG_ADDR_MSB,
-    S_WRITE_REG_DATA_MSB,
-    S_READ_REG_MSB,
-    S_SEND_ACK
+    S_IDLE                  =   0,
+    S_START                 =   1,
+    S_WRITE_ADDR_W          =   2,
+    S_CHECK_ACK             =   3,
+    S_WRITE_REG_ADDR        =   4,
+    S_RESTART               =   5,
+    S_WRITE_ADDR_R          =   6,
+    S_READ_REG              =   7,
+    S_SEND_NACK             =   8,
+    S_SEND_STOP             =   9,
+    S_WRITE_REG_DATA        =   10,
+    S_WRITE_REG_ADDR_MSB    =   11,
+    S_WRITE_REG_DATA_MSB    =   12,
+    S_READ_REG_MSB          =   13,
+    S_SEND_ACK              =   14
 } state_type;
 
 state_type                      state;
