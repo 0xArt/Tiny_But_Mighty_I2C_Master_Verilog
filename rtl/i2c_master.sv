@@ -40,6 +40,7 @@ module i2c_master#(
     inout                                   external_serial_clock
 );
 
+
  /*INSTANTATION TEMPLATE
 i2c_master #(.DATA_WIDTH(8),.REGISTER_WIDTH(8),.ADDRESS_WIDTH(7))
         i2c_master_inst(
@@ -83,7 +84,6 @@ state_type                      state;
 state_type                      _state;
 state_type                      post_state;
 state_type                      _post_state;
-
 reg                             serial_clock;
 logic                           _serial_clock;
 reg     [ADDRESS_WIDTH:0]       saved_device_address;
@@ -112,9 +112,9 @@ logic                           _busy;
 logic                           serial_data_output_enable;
 logic                           serial_clock_output_enable;
 
-
 assign external_serial_clock    =   (serial_clock_output_enable)  ?   serial_clock  :   1'bz;
 assign external_serial_data     =   (serial_data_output_enable)   ?   serial_data   :   1'bz;
+
 
 always_comb begin
     _state                  =   state;
@@ -206,6 +206,7 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        //check for clock stretching
                         if (external_serial_clock == 1) begin
                             _process_counter    =   2;
                         end
@@ -245,6 +246,7 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        //check for clock stretching
                         if (external_serial_clock == 1) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
@@ -280,6 +282,7 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        //check for clock stretching
                         if (external_serial_clock == 1) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
@@ -314,6 +317,7 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        //check for clock stretching
                         if (external_serial_clock == 1) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
@@ -360,8 +364,9 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        //check for clock stretching
                         if (external_serial_clock == 1) begin
-                            _last_acknowledge   =   1;
+                            _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
                     end
@@ -394,6 +399,7 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        //check for clock stretching
                         if (external_serial_clock == 1) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
@@ -450,6 +456,7 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        //check for clock stretching
                         if (external_serial_clock == 1) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
@@ -489,6 +496,7 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        //check for clock stretching
                         if (external_serial_clock == 1) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
@@ -521,7 +529,8 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
-                        if (external_serial_clock) begin
+                        //check for clock stretching
+                        if (external_serial_clock == 1) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -552,7 +561,8 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
-                        if (external_serial_clock) begin
+                        //check for clock stretching
+                        if (external_serial_clock == 1) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -578,7 +588,9 @@ always_comb begin
                         _serial_data        =   0;
                     end
                     1: begin
-                        if (external_serial_clock) begin
+                        //check for clock stretching
+                        if (external_serial_clock == 1) begin
+                            _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
                     end
@@ -601,7 +613,9 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        //check for clock stretching
                         if (external_serial_clock == 1) begin
+                            _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
                     end
