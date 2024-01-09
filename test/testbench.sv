@@ -25,21 +25,22 @@
 
 module testbench;
 
-localparam  DATA_WIDTH      =   8;
-localparam  REGISTER_WIDTH  =   8;
-localparam  ADDRESS_WIDTH   =   7;
+localparam  DATA_WIDTH          =   8;
+localparam  REGISTER_WIDTH      =   8;
+localparam  ADDRESS_WIDTH       =   7;
+localparam  CLOCK_FREQUENCY     =   50_000_000;
+localparam  CLOCK_PERIOD        =   1e9/CLOCK_FREQUENCY;
 
-real            clock_delay_50  = ((1/ (50e6))/2)*(1e9);
-reg             clock           = 0;
-reg             reset_n         = 1;
+reg             clock           =   0;
+reg             reset_n         =   1;
 wire            scl;
 wire            sda;
-reg             enable          = 0;
-reg             rw              = 0;
-reg     [7:0]   reg_addr        = 0;
-reg     [6:0]   device_addr     = 7'b001_0001;
-reg     [15:0]  divider         = 16'h0003;
-reg     [7:0]   data_to_write   = 8'h00;
+reg             enable          =   0;
+reg             rw              =   0;
+reg     [7:0]   reg_addr        =   0;
+reg     [6:0]   device_addr     =   7'b001_0001;
+reg     [15:0]  divider         =   16'h0003;
+reg     [7:0]   data_to_write   =   8'h00;
 
 
 wire                            i2c_master_clock;
@@ -74,7 +75,6 @@ i2c_master(
 
 pullup pullup_scl(scl); // pullup scl line
 
-
 pullup pullup_sda(sda); // pullup sda line
 
 
@@ -85,9 +85,13 @@ i2c_slave i2c_slave(
 
 
 //clock generation
-always begin
-    #clock_delay_50;
-    clock   = ~clock;
+initial begin
+    clock   =   0;
+    
+    forever begin
+        #(CLOCK_PERIOD/2);
+        clock   =   ~clock;
+    end
 end
 
 

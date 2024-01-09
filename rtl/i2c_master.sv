@@ -360,7 +360,7 @@ always_comb begin
             if (divider_tick) begin
                 case (process_counter)
                     0: begin
-                        _serial_data        =   1;
+                        _serial_clock       =   1;
                         _process_counter    =   1;
                     end
                     1: begin
