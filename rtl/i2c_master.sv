@@ -267,7 +267,7 @@ always_comb begin
                             _state              =   post_state;
                         end
                         else begin
-                            _state  =   S_IDLE;
+                            _state  =   S_SEND_STOP;
                         end
                         _process_counter =   0;
                     end
