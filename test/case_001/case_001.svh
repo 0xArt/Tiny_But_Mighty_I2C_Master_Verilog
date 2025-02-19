@@ -22,7 +22,7 @@
 `define _case_001_svh_
 
 task case_001();
-
+    $display("Running case 001");
     $display(" Writing value 8'hDC to address 1");
     $display("Configuring master");
     @(posedge testbench.clock);
