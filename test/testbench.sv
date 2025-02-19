@@ -33,8 +33,6 @@ localparam  CLOCK_PERIOD        =   1e9/CLOCK_FREQUENCY;
 
 reg             clock           =   0;
 reg             reset_n         =   1;
-wire            scl;
-wire            sda;
 reg             enable          =   0;
 reg             rw              =   0;
 reg     [7:0]   reg_addr        =   0;
@@ -50,12 +48,22 @@ wire                            i2c_master_read_write;
 wire    [DATA_WIDTH-1:0]        i2c_master_mosi_data;
 wire    [REGISTER_WIDTH-1:0]    i2c_master_register_address;
 wire    [ADDRESS_WIDTH-1:0]     i2c_master_device_address;
+
 wire    [15:0]                  i2c_master_divider;
 wire    [DATA_WIDTH-1:0]        i2c_master_miso_data;
 wire                            i2c_master_busy;
 
-i2c_master #(.DATA_WIDTH(DATA_WIDTH),.REGISTER_WIDTH(REGISTER_WIDTH),.ADDRESS_WIDTH(ADDRESS_WIDTH))
-i2c_master(
+wire                            scl;
+wire                            sda;
+
+i2c_master #(
+    .DATA_WIDTH                     (DATA_WIDTH),
+    .REGISTER_WIDTH                 (REGISTER_WIDTH),
+    .ADDRESS_WIDTH                  (ADDRESS_WIDTH),
+    .CHECK_FOR_CLOCK_STRETCHING     (1),
+    .CLOCK_STRETCHING_TIMER_WIDTH   (16),
+    .CLOCK_STRETCHING_MAX_COUNT     ('hFF)
+) i2c_master(
             .clock                  (i2c_master_clock),
             .reset_n                (i2c_master_reset_n),
             .enable                 (i2c_master_enable),
@@ -79,8 +87,8 @@ pullup pullup_sda(sda); // pullup sda line
 
 
 i2c_slave i2c_slave(
-    .scl(scl),
-    .sda(sda)
+    .scl    (scl),
+    .sda(   sda)
 );
 
 
@@ -98,17 +106,13 @@ end
 initial begin
     @(posedge clock)
     reset_n = 1;
-    #100;
     @(posedge clock)
     reset_n = 0;
-    #100;
     @(posedge clock)
     reset_n = 1;
-    #100;
+    @(posedge clock)
 
-    $display("Running case 000");
     case_000();
-    $display("Running case 001");
     case_001();
     $display("Tests have finsihed");
     $stop();

@@ -20,9 +20,12 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 module i2c_master#(
-    parameter DATA_WIDTH      = 8,
-    parameter REGISTER_WIDTH  = 8,
-    parameter ADDRESS_WIDTH   = 7
+    parameter DATA_WIDTH                    = 8,
+    parameter REGISTER_WIDTH                = 8,
+    parameter ADDRESS_WIDTH                 = 7,
+    parameter CHECK_FOR_CLOCK_STRETCHING    = 1,
+    parameter CLOCK_STRETCHING_TIMER_WIDTH  = 16,
+    parameter CLOCK_STRETCHING_MAX_COUNT    = 'hFF //set to 0 to disable, max number of divider ticks to wait during stretch check
 )(
     input   wire                            clock,
     input   wire                            reset_n,
@@ -42,24 +45,51 @@ module i2c_master#(
 
 
  /*INSTANTATION TEMPLATE
-i2c_master #(.DATA_WIDTH(8),.REGISTER_WIDTH(8),.ADDRESS_WIDTH(7))
-        i2c_master_inst(
-            .clock                  (),
-            .reset_n                (),
-            .enable                 (),
-            .read_write             (),
-            .mosi_data              (),
-            .register_address       (),
-            .device_address         (),
-            .divider                (),
+i2c_master #(
+    .DATA_WIDTH                     (8),
+    .REGISTER_WIDTH                 (8),
+    .ADDRESS_WIDTH                  (7),
+    .CHECK_FOR_CLOCK_STRETCHING     (1),
+    .CLOCK_STRETCHING_TIMER_WIDTH   (16),
+    .CLOCK_STRETCHING_MAX_COUNT     ('hFF)
+)
+i2c_master_inst(
+    .clock                  (),
+    .reset_n                (),
+    .enable                 (),
+    .read_write             (),
+    .mosi_data              (),
+    .register_address       (),
+    .device_address         (),
+    .divider                (),
 
-            .miso_data              (),
-            .busy                   (),
+    .miso_data              (),
+    .busy                   (),
 
-            .external_serial_data   (),
-            .external_serial_clock  ()
-        );
+    .external_serial_data   (),
+    .external_serial_clock  ()
+);
 */
+
+wire            timeout_cycle_timer_clock;
+wire            timeout_cycle_timer_reset_n;
+wire            timeout_cycle_timer_enable;
+logic           timeout_cycle_timer_load_count;
+wire  [15:0]    timeout_cycle_timer_count;
+
+wire            timeout_cycle_timer_expired;
+
+cycle_timer #(
+    .BIT_WIDTH (CLOCK_STRETCHING_TIMER_WIDTH)
+) timeout_cycle_timer (
+    .clock      (timeout_cycle_timer_clock),
+    .reset_n    (timeout_cycle_timer_reset_n),
+    .enable     (timeout_cycle_timer_enable),
+    .load_count (timeout_cycle_timer_load_count),
+    .count      (timeout_cycle_timer_count),
+
+    .expired    (timeout_cycle_timer_expired)
+);
 
 typedef enum
 {
@@ -112,26 +142,31 @@ logic                           _busy;
 logic                           serial_data_output_enable;
 logic                           serial_clock_output_enable;
 
-assign external_serial_clock    =   (serial_clock_output_enable)  ?   serial_clock  :   1'bz;
-assign external_serial_data     =   (serial_data_output_enable)   ?   serial_data   :   1'bz;
+assign external_serial_clock        =   (serial_clock_output_enable)  ?   serial_clock  :   1'bz;
+assign external_serial_data         =   (serial_data_output_enable)   ?   serial_data   :   1'bz;
 
+assign timeout_cycle_timer_clock    =   clock;
+assign timeout_cycle_timer_reset_n  =   reset_n;
+assign timeout_cycle_timer_enable   =   divider_tick;
+assign timeout_cycle_timer_count    =   CLOCK_STRETCHING_MAX_COUNT;
 
 always_comb begin
-    _state                  =   state;
-    _post_state             =   post_state;
-    _process_counter        =   process_counter;
-    _bit_counter            =   bit_counter;
-    _last_acknowledge       =   last_acknowledge;
-    _miso_data              =   miso_data;
-    _saved_read_write       =   saved_read_write;
-    _busy                   =   busy;
-    _divider_counter        =   divider_counter;
-    _saved_register_address =   saved_register_address;
-    _saved_device_address   =   saved_device_address;
-    _saved_mosi_data        =   saved_mosi_data;
-    _serial_data            =   serial_data;
-    _serial_clock           =   serial_clock;
-    _post_serial_data       =   post_serial_data;
+    _state                          =   state;
+    _post_state                     =   post_state;
+    _process_counter                =   process_counter;
+    _bit_counter                    =   bit_counter;
+    _last_acknowledge               =   last_acknowledge;
+    _miso_data                      =   miso_data;
+    _saved_read_write               =   saved_read_write;
+    _busy                           =   busy;
+    _divider_counter                =   divider_counter;
+    _saved_register_address         =   saved_register_address;
+    _saved_device_address           =   saved_device_address;
+    _saved_mosi_data                =   saved_mosi_data;
+    _serial_data                    =   serial_data;
+    _serial_clock                   =   serial_clock;
+    _post_serial_data               =   post_serial_data;
+    timeout_cycle_timer_load_count  =   0;
 
     if (divider_counter == divider) begin
         _divider_counter    =   0;
@@ -142,32 +177,36 @@ always_comb begin
         divider_tick        =   0;
     end
 
-    if (state!=S_IDLE && state!=S_CHECK_ACK && state!=S_READ_REG && state!=S_READ_REG_MSB) begin
+    if (state != S_IDLE && state != S_CHECK_ACK && state != S_READ_REG && state != S_READ_REG_MSB) begin
         serial_data_output_enable   =   1;
     end
     else begin
         serial_data_output_enable   =   0;
     end
 
-    if (state!=S_IDLE && process_counter!=1 && process_counter!=2) begin
+    if (state != S_IDLE && process_counter != 1 && process_counter != 2) begin
         serial_clock_output_enable   =   1;
     end
     else begin
         serial_clock_output_enable   =   0;
     end
 
+    if (process_counter == 0) begin
+        timeout_cycle_timer_load_count  =   1;
+    end
+
     case (state)
         S_IDLE: begin
-            _process_counter        =   0;
-            _bit_counter            =   0;
-            _last_acknowledge       =   0;
-            _busy                   =   0;
-            _saved_read_write       =   read_write;
-            _saved_register_address =   register_address;
-            _saved_device_address   =   {device_address,1'b0};
-            _saved_mosi_data        =   mosi_data;
-            _serial_data            =   1;
-            _serial_clock           =   1;
+            _process_counter                =   0;
+            _bit_counter                    =   0;
+            _last_acknowledge               =   0;
+            _busy                           =   0;
+            _saved_read_write               =   read_write;
+            _saved_register_address         =   register_address;
+            _saved_device_address           =   {device_address,1'b0};
+            _saved_mosi_data                =   mosi_data;
+            _serial_data                    =   1;
+            _serial_clock                   =   1;
 
             if (enable) begin
                 _state      =   S_START;
@@ -207,7 +246,13 @@ always_comb begin
                     end
                     1: begin
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _process_counter    =   2;
                         end
                     end
@@ -246,8 +291,14 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -282,8 +333,14 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -317,8 +374,14 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -364,8 +427,14 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -399,8 +468,14 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -456,8 +531,14 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -496,8 +577,14 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -529,8 +616,14 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -561,8 +654,14 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -588,8 +687,14 @@ always_comb begin
                         _serial_data        =   0;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -613,8 +718,14 @@ always_comb begin
                         _process_counter    =   1;
                     end
                     1: begin
+                        if (CLOCK_STRETCHING_MAX_COUNT != 0) begin
+                            if (timeout_cycle_timer_expired) begin
+                                _process_counter    = 0;
+                                _state              = S_IDLE;
+                            end
+                        end
                         //check for clock stretching
-                        if (external_serial_clock == 1) begin
+                        if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _last_acknowledge   =   0;
                             _process_counter    =   2;
                         end
@@ -647,7 +758,6 @@ always_ff @(posedge clock) begin
         saved_mosi_data         <=  0;
         serial_clock            <=  0;
         serial_data             <=  0;
-        saved_mosi_data         <=  0;
         post_serial_data        <=  0;
         busy                    <=  0;
     end

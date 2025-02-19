@@ -6,6 +6,7 @@ vlib presynth
 vmap presynth presynth
 
 vlog -sv -work presynth \
+    "rtl/cycle_timer.sv" \
     "rtl/i2c_master.sv" \
     "test/i2c_slave.v" \
     "test/testbench.sv"
