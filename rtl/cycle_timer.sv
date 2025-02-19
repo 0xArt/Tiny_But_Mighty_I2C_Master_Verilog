@@ -6,7 +6,7 @@
 // 
 // Create Date: 05/06/2023
 // Design Name: 
-// Module Name: i2c_master
+// Module Name: cycle_timer
 // Project Name: 
 // Target Devices: 
 // Tool Versions: 

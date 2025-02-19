@@ -12,7 +12,7 @@
 // Tool Versions: 
 // Description: 
 // 
-// Dependencies: 
+// Dependencies: cycle_timer.sv
 // 
 // Revision:
 // Revision 0.01 - File Created
