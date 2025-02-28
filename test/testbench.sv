@@ -25,11 +25,13 @@
 
 module testbench;
 
-localparam  DATA_WIDTH          =   8;
-localparam  REGISTER_WIDTH      =   8;
-localparam  ADDRESS_WIDTH       =   7;
-localparam  CLOCK_FREQUENCY     =   50_000_000;
-localparam  CLOCK_PERIOD        =   1e9/CLOCK_FREQUENCY;
+localparam  NUMBER_OF_DATA_BYTES        = 1;
+localparam  NUMBER_OF_REGISTER_BYTES    = 1;
+localparam  DATA_WIDTH                  = (NUMBER_OF_DATA_BYTES*8);
+localparam  REGISTER_WIDTH              = (NUMBER_OF_REGISTER_BYTES*8);
+localparam  ADDRESS_WIDTH               = 7;
+localparam  CLOCK_FREQUENCY             = 50_000_000;
+localparam  CLOCK_PERIOD                = 1e9/CLOCK_FREQUENCY;
 
 reg             clock           =   0;
 reg             reset_n         =   1;
@@ -57,8 +59,8 @@ wire                            scl;
 wire                            sda;
 
 i2c_master #(
-    .DATA_WIDTH                     (DATA_WIDTH),
-    .REGISTER_WIDTH                 (REGISTER_WIDTH),
+    .NUMBER_OF_DATA_BYTES           (NUMBER_OF_DATA_BYTES),
+    .NUMBER_OF_REGISTER_BYTES       (NUMBER_OF_REGISTER_BYTES),
     .ADDRESS_WIDTH                  (ADDRESS_WIDTH),
     .CHECK_FOR_CLOCK_STRETCHING     (1),
     .CLOCK_STRETCHING_TIMER_WIDTH   (16),
