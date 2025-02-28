@@ -25,7 +25,7 @@ module i2c_master#(
     parameter ADDRESS_WIDTH                 = 7,
     parameter CHECK_FOR_CLOCK_STRETCHING    = 1,
     parameter CLOCK_STRETCHING_TIMER_WIDTH  = 16,
-    parameter CLOCK_STRETCHING_MAX_COUNT    = 'hFF //set to 0 to disable
+    parameter CLOCK_STRETCHING_MAX_COUNT    = 'hFF //set to 0 to disable, max number of divider ticks to wait during stretch check
 )(
     input   wire                                        clock,
     input   wire                                        reset_n,
