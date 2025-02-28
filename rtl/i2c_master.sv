@@ -25,7 +25,7 @@ module i2c_master#(
     parameter ADDRESS_WIDTH                 = 7,
     parameter CHECK_FOR_CLOCK_STRETCHING    = 1,
     parameter CLOCK_STRETCHING_TIMER_WIDTH  = 16,
-    parameter CLOCK_STRETCHING_MAX_COUNT    = 'hFF //set to 0 to disable, max number of divider ticks to wait during stretch check
+    parameter CLOCK_STRETCHING_MAX_COUNT    = 'hFF //set to 0 to disable
 )(
     input   wire                            clock,
     input   wire                            reset_n,
@@ -167,6 +167,7 @@ always_comb begin
     _serial_clock                   =   serial_clock;
     _post_serial_data               =   post_serial_data;
     timeout_cycle_timer_load_count  =   0;
+    serial_data_output_enable       =   1;
 
     if (divider_counter == divider) begin
         _divider_counter    =   0;
@@ -175,13 +176,6 @@ always_comb begin
     else begin
         _divider_counter    =   divider_counter + 1;
         divider_tick        =   0;
-    end
-
-    if (state != S_IDLE && state != S_CHECK_ACK && state != S_READ_REG && state != S_READ_REG_MSB) begin
-        serial_data_output_enable   =   1;
-    end
-    else begin
-        serial_data_output_enable   =   0;
     end
 
     if (state != S_IDLE && process_counter != 1 && process_counter != 2) begin
@@ -197,6 +191,7 @@ always_comb begin
 
     case (state)
         S_IDLE: begin
+            serial_data_output_enable       =   0;
             _process_counter                =   0;
             _bit_counter                    =   0;
             _last_acknowledge               =   0;
@@ -238,6 +233,10 @@ always_comb begin
             end
         end
         S_WRITE_ADDR_W: begin
+            if (process_counter == 3 && bit_counter == 0) begin
+                serial_data_output_enable   = 0;
+            end
+
             if (divider_tick) begin
                 case (process_counter)
                     0: begin
@@ -254,6 +253,7 @@ always_comb begin
                         end
                         if (external_serial_clock || !CHECK_FOR_CLOCK_STRETCHING) begin
                             _process_counter    =   2;
+                            _state              =   S_WRITE_ADDR_W;
                         end
                     end
                     2: begin
@@ -272,8 +272,8 @@ always_comb begin
                                 _post_state =   S_WRITE_REG_ADDR;
                             end
 
-                            _state          =   S_CHECK_ACK;
-                            _bit_counter    =   8;
+                            _state                      = S_CHECK_ACK;
+                            _bit_counter                = 8;
                         end
                         else begin
                             _serial_data    =   saved_device_address[bit_counter-1];
@@ -284,6 +284,10 @@ always_comb begin
             end
         end
         S_CHECK_ACK: begin
+            if (process_counter != 3) begin
+                serial_data_output_enable       =   0;
+            end
+
             if (divider_tick) begin
                 case (process_counter)
                     0: begin
@@ -367,6 +371,10 @@ always_comb begin
             end
         end
         S_WRITE_REG_ADDR: begin
+            if (process_counter == 3 && bit_counter == 0) begin
+                serial_data_output_enable   = 0;
+            end
+
             if (divider_tick) begin
                 case (process_counter)
                     0: begin
@@ -420,6 +428,10 @@ always_comb begin
             end
         end
         S_WRITE_REG_DATA_MSB: begin
+            if (process_counter == 3 && bit_counter == 0) begin
+                serial_data_output_enable   = 0;
+            end
+
             if (divider_tick) begin
                 case (process_counter)
                     0: begin
@@ -461,6 +473,10 @@ always_comb begin
             end
         end
         S_WRITE_REG_DATA: begin
+            if (process_counter == 3 && bit_counter == 0) begin
+                serial_data_output_enable   = 0;
+            end
+
             if (divider_tick) begin
                 case (process_counter)
                     0: begin
@@ -524,6 +540,10 @@ always_comb begin
             end
         end
         S_WRITE_ADDR_R: begin
+            if (process_counter == 3 && bit_counter == 0) begin
+                serial_data_output_enable   = 0;
+            end
+            
             if (divider_tick) begin
                 case (process_counter)
                     0: begin
@@ -570,6 +590,8 @@ always_comb begin
             end
         end
         S_READ_REG_MSB: begin
+            serial_data_output_enable       =   0;
+
             if (divider_tick) begin
                 case (process_counter)
                     0: begin
@@ -609,6 +631,8 @@ always_comb begin
             end
         end
         S_READ_REG: begin
+            serial_data_output_enable       =   0;
+
             if (divider_tick) begin
                 case (process_counter)
                     0: begin
