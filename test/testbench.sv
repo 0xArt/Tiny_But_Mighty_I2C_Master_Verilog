@@ -33,14 +33,14 @@ localparam  ADDRESS_WIDTH               = 7;
 localparam  CLOCK_FREQUENCY             = 50_000_000;
 localparam  CLOCK_PERIOD                = 1e9/CLOCK_FREQUENCY;
 
-reg             clock           =   0;
-reg             reset_n         =   1;
-reg             enable          =   0;
-reg             rw              =   0;
-reg     [7:0]   reg_addr        =   0;
-reg     [6:0]   device_addr     =   7'b001_0001;
-reg     [15:0]  divider         =   16'h0003;
-reg     [7:0]   data_to_write   =   8'h00;
+reg                             clock           =   0;
+reg                             reset_n         =   1;
+reg                             enable          =   0;
+reg                             rw              =   0;
+reg     [REGISTER_WIDTH-1:0]    reg_addr        =   0;
+reg     [6:0]                   device_addr     =   7'b001_0001;
+reg     [15:0]                  divider         =   'h0003;
+reg     [DATA_WIDTH-1:0]        data_to_write   =   'h00;
 
 
 wire                            i2c_master_clock;
@@ -83,8 +83,8 @@ i2c_master #(
 );
 
 
-pullup pullup_scl(scl); // pullup scl line
 
+pullup pullup_scl(scl); // pullup scl line
 pullup pullup_sda(sda); // pullup sda line
 
 

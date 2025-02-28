@@ -109,6 +109,7 @@ typedef enum
 
 localparam DATA_WIDTH       = (NUMBER_OF_DATA_BYTES*8);
 localparam REGISTER_WIDTH   = (NUMBER_OF_REGISTER_BYTES*8);
+localparam MAX_NUMBER_BYTES = (NUMBER_OF_DATA_BYTES > NUMBER_OF_REGISTER_BYTES) ? NUMBER_OF_DATA_BYTES : NUMBER_OF_REGISTER_BYTES;
 
 state_type                                  state;
 state_type                                  _state;
@@ -141,8 +142,8 @@ logic   [DATA_WIDTH-1:0]                    _miso_data;
 logic                                       _busy;
 logic                                       serial_data_output_enable;
 logic                                       serial_clock_output_enable;
-logic   [7:0]                               _byte_counter;
-reg     [7:0]                               byte_counter;
+logic   [$clog2(MAX_NUMBER_BYTES)-1:0]      _byte_counter;
+reg     [$clog2(MAX_NUMBER_BYTES)-1:0]      byte_counter;
 
 assign external_serial_clock        = (serial_clock_output_enable)  ? serial_clock : 1'bz;
 assign external_serial_data         = (serial_data_output_enable)   ? serial_data  : 1'bz;
@@ -379,8 +380,8 @@ always_comb begin
                             end
                         end
                         else begin
-                            _serial_data            = saved_register_address[ADDRESS_WIDTH-1];
-                            _saved_register_address = {saved_register_address[ADDRESS_WIDTH-2:0], saved_register_address[ADDRESS_WIDTH-1]}; 
+                            _serial_data            = saved_register_address[REGISTER_WIDTH-1];
+                            _saved_register_address = {saved_register_address[REGISTER_WIDTH-2:0], saved_register_address[REGISTER_WIDTH-1]}; 
                         end
                         _process_counter    = 0;
                     end
