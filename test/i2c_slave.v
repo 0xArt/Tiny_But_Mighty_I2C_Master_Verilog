@@ -350,14 +350,14 @@ module i2c_slave (scl, sda);
                 fast_tsu_sto  =  600,
                 fast_tbuf     = 1300;
 
-      $width(negedge scl, fast_scl_low);  // scl low time
-      $width(posedge scl, fast_scl_high); // scl high time
+      $width(negedge scl, normal_scl_low);  // scl low time
+      $width(posedge scl, normal_scl_high); // scl high time
 
-      $setup(posedge scl, negedge sda &&& scl, fast_tsu_sta); // setup start
-      $setup(negedge sda &&& scl, negedge scl, fast_thd_sta); // hold start
-      $setup(posedge scl, posedge sda &&& scl, fast_tsu_sto); // setup stop
+      $setup(posedge scl, negedge sda &&& scl, normal_tsu_sta); // setup start
+      $setup(negedge sda &&& scl, negedge scl, normal_thd_sta); // hold start
+      $setup(posedge scl, posedge sda &&& scl, normal_tsu_sto); // setup stop
 
-      $setup(posedge tst_sta, posedge tst_sto, fast_tbuf); // stop to start time
+      $setup(posedge tst_sta, posedge tst_sto, normal_tbuf); // stop to start time
     endspecify
 
 endmodule

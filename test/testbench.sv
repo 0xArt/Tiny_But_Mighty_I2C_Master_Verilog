@@ -39,7 +39,7 @@ reg                             enable          =   0;
 reg                             rw              =   0;
 reg     [REGISTER_WIDTH-1:0]    reg_addr        =   0;
 reg     [6:0]                   device_addr     =   7'b001_0001;
-reg     [15:0]                  divider         =   'd121;
+reg     [15:0]                  divider         =   'h0003;
 reg     [DATA_WIDTH-1:0]        data_to_write   =   'h00;
 
 
