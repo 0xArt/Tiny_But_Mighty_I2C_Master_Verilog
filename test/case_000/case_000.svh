@@ -30,7 +30,7 @@ task case_000();
     testbench.reg_addr      = 8'h00;        //writing to slave register 0
     testbench.data_to_write = 8'hAC;
     testbench.device_addr   = 7'b001_0001;  //slave address
-    testbench.divider       = 16'hFFFF;     //divider value for i2c serial clock
+    testbench.divider       = 'd121;     //divider value for i2c serial clock
     @(posedge testbench.clock);
     $display("Enabling master");
     testbench.enable        = 1;
