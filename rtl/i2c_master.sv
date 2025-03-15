@@ -142,8 +142,8 @@ logic   [DATA_WIDTH-1:0]                    _miso_data;
 logic                                       _busy;
 logic                                       serial_data_output_enable;
 logic                                       serial_clock_output_enable;
-logic   [$clog2(MAX_NUMBER_BYTES)-1:0]      _byte_counter;
-reg     [$clog2(MAX_NUMBER_BYTES)-1:0]      byte_counter;
+logic   [$clog2(MAX_NUMBER_BYTES):0]        _byte_counter;
+reg     [$clog2(MAX_NUMBER_BYTES):0]        byte_counter;
 
 assign external_serial_clock        = (serial_clock_output_enable)  ? serial_clock : 1'bz;
 assign external_serial_data         = (serial_data_output_enable)   ? serial_data  : 1'bz;
@@ -502,7 +502,7 @@ always_comb begin
                             _post_serial_data   = 0;
                             _state              = S_CHECK_ACK;
                             _bit_counter        = 8;
-                            _byte_counter       = NUMBER_OF_REGISTER_BYTES;
+                            _byte_counter       = NUMBER_OF_DATA_BYTES;
                         end
                         else begin
                             _serial_data            = saved_device_address[ADDRESS_WIDTH-1];
