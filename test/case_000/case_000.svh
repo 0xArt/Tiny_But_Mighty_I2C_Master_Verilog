@@ -44,8 +44,8 @@ task case_000();
     $display("Configuring master");
     @(posedge testbench.clock);
     testbench.rw            = 1;            //read operation
-    testbench.reg_addr      = 8'h00;        //reading from slave register 0
-    testbench.data_to_write = 8'h00;
+    testbench.reg_addr      = '0;           //reading from slave register 0
+    testbench.data_to_write = '0;
     testbench.device_addr   = 7'b001_0001;  //slave address
     @(posedge testbench.clock);
     $display("Enabling master");

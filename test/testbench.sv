@@ -90,7 +90,7 @@ pullup pullup_sda(sda); // pullup sda line
 
 i2c_slave i2c_slave(
     .scl    (scl),
-    .sda(   sda)
+    .sda    (sda)
 );
 
 

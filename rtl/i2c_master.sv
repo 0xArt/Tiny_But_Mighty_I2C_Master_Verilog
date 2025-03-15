@@ -107,8 +107,8 @@ typedef enum
     S_SEND_ACK              = 11
 } state_type;
 
-localparam DATA_WIDTH       = (NUMBER_OF_DATA_BYTES*8);
-localparam REGISTER_WIDTH   = (NUMBER_OF_REGISTER_BYTES*8);
+localparam DATA_WIDTH       = (NUMBER_OF_DATA_BYTES * 8);
+localparam REGISTER_WIDTH   = (NUMBER_OF_REGISTER_BYTES * 8);
 localparam MAX_NUMBER_BYTES = (NUMBER_OF_DATA_BYTES > NUMBER_OF_REGISTER_BYTES) ? NUMBER_OF_DATA_BYTES : NUMBER_OF_REGISTER_BYTES;
 
 state_type                                  state;
@@ -119,14 +119,14 @@ reg                                         serial_clock;
 logic                                       _serial_clock;
 reg     [ADDRESS_WIDTH:0]                   saved_device_address;
 logic   [ADDRESS_WIDTH:0]                   _saved_device_address;
-reg     [(NUMBER_OF_REGISTER_BYTES*8)-1:0]  saved_register_address;
-logic   [(NUMBER_OF_REGISTER_BYTES*8)-1:0]  _saved_register_address;
-reg     [(NUMBER_OF_DATA_BYTES*8)-1:0]      saved_mosi_data;
-logic   [(NUMBER_OF_DATA_BYTES*8)-1:0]      _saved_mosi_data;
+reg     [REGISTER_WIDTH-1:0]                saved_register_address;
+logic   [REGISTER_WIDTH-1:0]                _saved_register_address;
+reg     [DATA_WIDTH-1:0]                    saved_mosi_data;
+logic   [DATA_WIDTH-1:0]                    _saved_mosi_data;
 reg     [1:0]                               process_counter;
 logic   [1:0]                               _process_counter;
-reg     [7:0]                               bit_counter;
-logic   [7:0]                               _bit_counter;
+reg     [3:0]                               bit_counter;
+logic   [3:0]                               _bit_counter;
 reg                                         serial_data;
 logic                                       _serial_data;
 reg                                         post_serial_data;
@@ -142,8 +142,8 @@ logic   [DATA_WIDTH-1:0]                    _miso_data;
 logic                                       _busy;
 logic                                       serial_data_output_enable;
 logic                                       serial_clock_output_enable;
-logic   [$clog2(MAX_NUMBER_BYTES):0]        _byte_counter;
-reg     [$clog2(MAX_NUMBER_BYTES):0]        byte_counter;
+logic   [$clog2(MAX_NUMBER_BYTES)-1:0]      _byte_counter;
+reg     [$clog2(MAX_NUMBER_BYTES)-1:0]      byte_counter;
 
 assign external_serial_clock        = (serial_clock_output_enable)  ? serial_clock : 1'bz;
 assign external_serial_data         = (serial_data_output_enable)   ? serial_data  : 1'bz;
@@ -272,7 +272,7 @@ always_comb begin
                             _post_state             = S_WRITE_REG_ADDR;
                             _state                  = S_CHECK_ACK;
                             _bit_counter            = 8;
-                            _byte_counter           = NUMBER_OF_REGISTER_BYTES;
+                            _byte_counter           = NUMBER_OF_REGISTER_BYTES - 1;
                         end
                         else begin
                             _serial_data            = saved_device_address[ADDRESS_WIDTH-1];
@@ -363,15 +363,16 @@ always_comb begin
                             _serial_data    = 0;
                             _state          = S_CHECK_ACK;
 
-                            if (byte_counter == 1) begin
+                            if (byte_counter == 0) begin
                                 if (read_write == 0) begin
                                     _post_state         = S_WRITE_REG_DATA;
                                     _post_serial_data   = saved_mosi_data[DATA_WIDTH-1];
                                     _saved_mosi_data    = {saved_mosi_data[DATA_WIDTH-2:0], saved_mosi_data[DATA_WIDTH-1]};
-                                    _byte_counter       = NUMBER_OF_DATA_BYTES;
+                                    _byte_counter       = NUMBER_OF_DATA_BYTES - 1;
                                 end
                                 else begin
                                     _post_state         = S_RESTART;
+                                    _byte_counter       = 0;
                                     _post_serial_data   = 1;
                                 end
                             end
@@ -423,9 +424,9 @@ always_comb begin
                             _state              = S_CHECK_ACK;
                             _bit_counter        = 8;
                             _serial_data        = 0;
-                            _bit_counter        = 8;
 
-                            if (byte_counter == 1) begin
+                            if (byte_counter == 0) begin
+                                _byte_counter       = 0;
                                 _post_state         = S_SEND_STOP;
                                 _post_serial_data   = 0;
                             end
@@ -502,7 +503,7 @@ always_comb begin
                             _post_serial_data   = 0;
                             _state              = S_CHECK_ACK;
                             _bit_counter        = 8;
-                            _byte_counter       = NUMBER_OF_DATA_BYTES;
+                            _byte_counter       = NUMBER_OF_DATA_BYTES - 1;
                         end
                         else begin
                             _serial_data            = saved_device_address[ADDRESS_WIDTH-1];
@@ -551,7 +552,8 @@ always_comb begin
                             _bit_counter    = 8;
                             _serial_data    = 0;
 
-                            if (byte_counter == 1) begin
+                            if (byte_counter == 0) begin
+                                _byte_counter   = 0;
                                 _state          = S_SEND_NACK;
                             end
                             else begin
