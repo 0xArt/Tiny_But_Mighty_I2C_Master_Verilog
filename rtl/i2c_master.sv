@@ -202,7 +202,7 @@ always_comb begin
             _busy                           = 0;
             _saved_read_write               = read_write;
             _saved_register_address         = register_address;
-            _saved_device_address           = {device_address,1'b0};
+            _saved_device_address           = {device_address,1'b0};  // write
             _saved_mosi_data                = mosi_data;
             _serial_data                    = 1;
             _serial_clock                   = 1;
@@ -462,7 +462,7 @@ always_comb begin
                     3: begin
                         _state                      = S_START;
                         _post_state                 = S_WRITE_ADDR_R;
-                        _saved_device_address[0]    = 1;
+                        _saved_device_address       = {device_address,1'b1};  // read
                         _process_counter            = 0;
                     end
                 endcase
