@@ -199,7 +199,6 @@ always_comb begin
             _process_counter                = 0;
             _bit_counter                    = 0;
             _last_acknowledge               = 0;
-            _busy                           = 0;
             _saved_read_write               = read_write;
             _saved_register_address         = register_address;
             _saved_device_address           = {device_address,1'b0};  // write
@@ -210,7 +209,6 @@ always_comb begin
             if (enable) begin
                 _state      = S_START;
                 _post_state = S_WRITE_ADDR_W;
-                _busy       = 1;
             end
         end
         S_START: begin
@@ -663,6 +661,8 @@ always_comb begin
             end
         end
     endcase
+
+    _busy = (_state != S_IDLE);
 end
 
 always_ff @(posedge clock) begin
