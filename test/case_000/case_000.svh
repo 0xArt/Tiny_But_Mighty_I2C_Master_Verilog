@@ -21,7 +21,7 @@
 `ifndef _case_000_svh_
 `define _case_000_svh_
 
-task case_000();
+task case_000(logic [6:0] device_addr);
     $display("Running case 000");
     $display(" Writing value 8'hAC to address 0");
     $display("Configuring master");
@@ -29,7 +29,7 @@ task case_000();
     testbench.rw            = 0;            //write operation
     testbench.reg_addr      = 8'h00;        //writing to slave register 0
     testbench.data_to_write = 8'hAC;
-    testbench.device_addr   = 7'b001_0001;  //slave address
+    testbench.device_addr   = device_addr;  //slave address
     testbench.divider       = 16'hFFFF;     //divider value for i2c serial clock
     @(posedge testbench.clock);
     $display("Enabling master");
@@ -38,7 +38,7 @@ task case_000();
     $display("Master has started writing");
     testbench.enable        = 0;
     @(negedge testbench.i2c_master_busy);
-    $display("Master has finsihed writing");
+    $display("Master has finished writing");
 
     $display("Reading from address 0");
     $display("Configuring master");
@@ -46,7 +46,7 @@ task case_000();
     testbench.rw            = 1;            //read operation
     testbench.reg_addr      = '0;           //reading from slave register 0
     testbench.data_to_write = '0;
-    testbench.device_addr   = 7'b001_0001;  //slave address
+    testbench.device_addr   = device_addr;  //slave address
     @(posedge testbench.clock);
     $display("Enabling master");
     testbench.enable        = 1;
@@ -54,7 +54,7 @@ task case_000();
     $display("Master has started reading");
     testbench.enable        = 0;
     @(negedge testbench.i2c_master_busy);
-    $display("Master has finsihed reading");
+    $display("Master has finished reading");
     assert (testbench.i2c_master_miso_data == 8'hAC) $display ("Read correct data from address 0");
         else $error("Read back incorrect data from address 0. Expected %h but got %h", 8'hAC, testbench.i2c_master_miso_data);
 
