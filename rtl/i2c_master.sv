@@ -363,7 +363,7 @@ always_comb begin
                             _state          = S_CHECK_ACK;
 
                             if (byte_counter == 0) begin
-                                if (read_write == 0) begin
+                                if (saved_read_write == 0) begin
                                     _post_state         = S_WRITE_REG_DATA;
                                     _post_serial_data   = saved_mosi_data[DATA_WIDTH-1];
                                     _saved_mosi_data    = {saved_mosi_data[DATA_WIDTH-2:0], saved_mosi_data[DATA_WIDTH-1]};
@@ -461,7 +461,7 @@ always_comb begin
                     3: begin
                         _state                      = S_START;
                         _post_state                 = S_WRITE_ADDR_R;
-                        _saved_device_address       = {device_address,1'b1};  // read
+                        _saved_device_address       = {saved_device_address[ADDRESS_WIDTH:1],1'b1};    // read
                         _process_counter            = 0;
                     end
                 endcase
