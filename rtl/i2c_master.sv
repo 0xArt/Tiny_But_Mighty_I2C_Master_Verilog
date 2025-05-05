@@ -222,6 +222,7 @@ always_comb begin
                         _process_counter    = 2;
                     end
                     2:  begin
+                        _serial_clock       = 0;
                         _bit_counter        = 8;
                         _process_counter    = 3;
                     end
