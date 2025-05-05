@@ -516,7 +516,7 @@ always_comb begin
             end
         end
         S_READ_REG: begin
-            if (process_counter != 3) begin
+            if (process_counter != 3 || bit_counter != 0) begin
                 serial_data_output_enable   = 0;
             end
 
