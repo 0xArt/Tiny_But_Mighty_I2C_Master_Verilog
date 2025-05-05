@@ -3,21 +3,21 @@
 // Company:  www.circuitden.com
 // Engineer: Artin Isagholian
 //           artinisagholian@gmail.com
-// 
+//
 // Create Date: 01/20/2021 05:47:22 PM
-// Design Name: 
+// Design Name:
 // Module Name: i2c_master
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
+// Project Name:
+// Target Devices:
+// Tool Versions:
+// Description:
+//
 // Dependencies: cycle_timer.sv
-// 
+//
 // Revision:
 // Revision 0.01 - File Created
 // Additional Comments:
-// 
+//
 //////////////////////////////////////////////////////////////////////////////////
 module i2c_master#(
     parameter NUMBER_OF_DATA_BYTES          = 1,
@@ -199,7 +199,6 @@ always_comb begin
             _process_counter                = 0;
             _bit_counter                    = 0;
             _last_acknowledge               = 0;
-            _busy                           = 0;
             _saved_read_write               = read_write;
             _saved_register_address         = register_address;
             _saved_device_address           = {device_address,1'b0};  // write
@@ -210,7 +209,6 @@ always_comb begin
             if (enable) begin
                 _state      = S_START;
                 _post_state = S_WRITE_ADDR_W;
-                _busy       = 1;
             end
         end
         S_START: begin
@@ -224,14 +222,16 @@ always_comb begin
                         _process_counter    = 2;
                     end
                     2:  begin
+                        _serial_clock       = 0;
                         _bit_counter        = 8;
                         _process_counter    = 3;
                     end
                     3:  begin
-                        _serial_clock       = 0;
-                        _process_counter    = 0;
-                        _state              = post_state;
-                        _serial_data        = saved_device_address[ADDRESS_WIDTH];
+                        _serial_clock           = 0;
+                        _process_counter        = 0;
+                        _state                  = post_state;
+                        _serial_data            = saved_device_address[ADDRESS_WIDTH];
+                        _saved_device_address   = {saved_device_address[ADDRESS_WIDTH-1:0], saved_device_address[ADDRESS_WIDTH]};
                     end
                 endcase
             end
@@ -275,8 +275,8 @@ always_comb begin
                             _byte_counter           = NUMBER_OF_REGISTER_BYTES - 1;
                         end
                         else begin
-                            _serial_data            = saved_device_address[ADDRESS_WIDTH-1];
-                            _saved_device_address   = {saved_device_address[ADDRESS_WIDTH-2:0], saved_device_address[ADDRESS_WIDTH-1]};
+                            _serial_data            = saved_device_address[ADDRESS_WIDTH];
+                            _saved_device_address   = {saved_device_address[ADDRESS_WIDTH-1:0], saved_device_address[ADDRESS_WIDTH]};
                         end
                         _process_counter    = 0;
                     end
@@ -364,7 +364,7 @@ always_comb begin
                             _state          = S_CHECK_ACK;
 
                             if (byte_counter == 0) begin
-                                if (read_write == 0) begin
+                                if (saved_read_write == 0) begin
                                     _post_state         = S_WRITE_REG_DATA;
                                     _post_serial_data   = saved_mosi_data[DATA_WIDTH-1];
                                     _saved_mosi_data    = {saved_mosi_data[DATA_WIDTH-2:0], saved_mosi_data[DATA_WIDTH-1]};
@@ -382,7 +382,7 @@ always_comb begin
                         end
                         else begin
                             _serial_data            = saved_register_address[REGISTER_WIDTH-1];
-                            _saved_register_address = {saved_register_address[REGISTER_WIDTH-2:0], saved_register_address[REGISTER_WIDTH-1]}; 
+                            _saved_register_address = {saved_register_address[REGISTER_WIDTH-2:0], saved_register_address[REGISTER_WIDTH-1]};
                         end
                         _process_counter    = 0;
                     end
@@ -462,7 +462,7 @@ always_comb begin
                     3: begin
                         _state                      = S_START;
                         _post_state                 = S_WRITE_ADDR_R;
-                        _saved_device_address       = {device_address,1'b1};  // read
+                        _saved_device_address       = {saved_device_address[ADDRESS_WIDTH:1],1'b1};    // read
                         _process_counter            = 0;
                     end
                 endcase
@@ -472,7 +472,7 @@ always_comb begin
             if (process_counter == 3 && bit_counter == 0) begin
                 serial_data_output_enable   = 0;
             end
-            
+
             if (divider_tick) begin
                 case (process_counter)
                     0: begin
@@ -506,8 +506,8 @@ always_comb begin
                             _byte_counter       = NUMBER_OF_DATA_BYTES - 1;
                         end
                         else begin
-                            _serial_data            = saved_device_address[ADDRESS_WIDTH-1];
-                            _saved_device_address   = {saved_device_address[ADDRESS_WIDTH-2:0], saved_device_address[ADDRESS_WIDTH-1]};
+                            _serial_data            = saved_device_address[ADDRESS_WIDTH];
+                            _saved_device_address   = {saved_device_address[ADDRESS_WIDTH-1:0], saved_device_address[ADDRESS_WIDTH]};
                         end
                         _process_counter    = 0;
                     end
@@ -515,7 +515,7 @@ always_comb begin
             end
         end
         S_READ_REG: begin
-            if (process_counter != 3) begin
+            if (process_counter != 3 || bit_counter != 0) begin
                 serial_data_output_enable   = 0;
             end
 
@@ -662,6 +662,8 @@ always_comb begin
             end
         end
     endcase
+
+    _busy = (_state != S_IDLE);
 end
 
 always_ff @(posedge clock) begin
@@ -702,5 +704,5 @@ always_ff @(posedge clock) begin
         byte_counter            <= _byte_counter;
     end
  end
-    
+
 endmodule

@@ -3,20 +3,20 @@
 // Company:       www.circuitden.com
 // Engineer:      Artin Isagholian
 //                artinisagholian@gmail.com
-// 
-// Create Date:    15:43:35 10/22/2020 
-// Design Name: 
+//
+// Create Date:    15:43:35 10/22/2020
+// Design Name:
 // Module Name:    testbench
-// Project Name: 
-// Target Devices: 
-// Tool versions: 
-// Description: 
+// Project Name:
+// Target Devices:
+// Tool versions:
+// Description:
 //
-// Dependencies: 
+// Dependencies:
 //
-// Revision: 
+// Revision:
 // Revision 0.01 - File Created
-// Additional Comments: 
+// Additional Comments:
 //
 //////////////////////////////////////////////////////////////////////////////////
 `include "./case_000/case_000.svh"
@@ -88,7 +88,17 @@ pullup pullup_scl(scl); // pullup scl line
 pullup pullup_sda(sda); // pullup sda line
 
 
-i2c_slave i2c_slave(
+i2c_slave #(
+    .I2C_ADR(7'h11)
+) i2c_slave_11 (
+    .scl    (scl),
+    .sda    (sda)
+);
+
+
+i2c_slave #(
+    .I2C_ADR(7'h41)
+) i2c_slave_41 (
     .scl    (scl),
     .sda    (sda)
 );
@@ -97,7 +107,7 @@ i2c_slave i2c_slave(
 //clock generation
 initial begin
     clock   =   0;
-    
+
     forever begin
         #(CLOCK_PERIOD/2);
         clock   =   ~clock;
@@ -114,9 +124,11 @@ initial begin
     reset_n = 1;
     @(posedge clock)
 
-    case_000();
-    case_001();
-    $display("Tests have finsihed");
+    case_000(7'h11);
+    case_001(7'h11);
+    case_000(7'h41);
+    case_001(7'h41);
+    $display("Tests have finished");
     $stop();
 end
 
