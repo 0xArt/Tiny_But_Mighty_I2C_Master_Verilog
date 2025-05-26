@@ -23,7 +23,7 @@
 
 task case_000();
     $display("Running case 000");
-    $display(" Writing value 8'hAC to address 0");
+    $display(" Writing value 8'hAC to address 0 using slave 0");
     $display("Configuring master");
     @(posedge testbench.clock);
     testbench.rw            = 0;            //write operation
@@ -40,7 +40,7 @@ task case_000();
     @(negedge testbench.i2c_master_busy);
     $display("Master has finsihed writing");
 
-    $display("Reading from address 0");
+    $display("Reading from address 0 using slave 0");
     $display("Configuring master");
     @(posedge testbench.clock);
     testbench.rw            = 1;            //read operation
@@ -55,8 +55,8 @@ task case_000();
     testbench.enable        = 0;
     @(negedge testbench.i2c_master_busy);
     $display("Master has finsihed reading");
-    assert (testbench.i2c_master_miso_data == 8'hAC) $display ("Read correct data from address 0");
-        else $error("Read back incorrect data from address 0. Expected %h but got %h", 8'hAC, testbench.i2c_master_miso_data);
+    assert (testbench.i2c_master_miso_data == 8'hAC) $display ("Read correct data from address 0 using slave 0");
+        else $fatal(1, "Read back incorrect data from address 0 using slave 0. Expected %h but got %h", 8'hAC, testbench.i2c_master_miso_data);
 
 endtask: case_000
 

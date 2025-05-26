@@ -24,7 +24,7 @@ add wave -noupdate -expand -group master /testbench/i2c_master/post_state
 add wave -noupdate -expand -group master /testbench/i2c_master/_post_state
 add wave -noupdate -expand -group master /testbench/i2c_master/serial_clock
 add wave -noupdate -expand -group master /testbench/i2c_master/_serial_clock
-add wave -noupdate -expand -group master /testbench/i2c_master/saved_device_address
+add wave -noupdate -expand -group master -expand /testbench/i2c_master/saved_device_address
 add wave -noupdate -expand -group master /testbench/i2c_master/_saved_device_address
 add wave -noupdate -expand -group master /testbench/i2c_master/saved_register_address
 add wave -noupdate -expand -group master /testbench/i2c_master/_saved_register_address
@@ -46,15 +46,14 @@ add wave -noupdate -expand -group master /testbench/i2c_master/divider_counter
 add wave -noupdate -expand -group master /testbench/i2c_master/_divider_counter
 add wave -noupdate -expand -group master /testbench/i2c_master/divider_tick
 add wave -noupdate -expand -group master /testbench/i2c_master/_miso_data
-add wave -noupdate -expand -group master /testbench/i2c_master/_busy
 add wave -noupdate -expand -group master /testbench/i2c_master/serial_data_output_enable
 add wave -noupdate -expand -group master /testbench/i2c_master/serial_clock_output_enable
 add wave -noupdate -expand -group master /testbench/i2c_master/_byte_counter
 add wave -noupdate -expand -group master /testbench/i2c_master/byte_counter
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {53739810000 ps} 0}
+WaveRestoreCursors {{Cursor 1} {266076210000 ps} 0}
 quietly wave cursor active 1
-configure wave -namecolwidth 150
+configure wave -namecolwidth 307
 configure wave -valuecolwidth 84
 configure wave -justifyvalue left
 configure wave -signalnamewidth 1
@@ -68,4 +67,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ps
 update
-WaveRestoreZoom {120245529152 ps} {148910639930 ps}
+WaveRestoreZoom {0 ps} {419021229576 ps}
