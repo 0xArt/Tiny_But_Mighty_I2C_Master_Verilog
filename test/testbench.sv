@@ -21,17 +21,22 @@
 //////////////////////////////////////////////////////////////////////////////////
 `include "./case_000/case_000.svh"
 `include "./case_001/case_001.svh"
+`include "./case_002/case_002.svh"
+`include "./case_003/case_003.svh"
 
 
 module testbench;
 
-localparam  NUMBER_OF_DATA_BYTES        = 1;
-localparam  NUMBER_OF_REGISTER_BYTES    = 1;
-localparam  DATA_WIDTH                  = (NUMBER_OF_DATA_BYTES*8);
-localparam  REGISTER_WIDTH              = (NUMBER_OF_REGISTER_BYTES*8);
-localparam  ADDRESS_WIDTH               = 7;
-localparam  CLOCK_FREQUENCY             = 50_000_000;
-localparam  CLOCK_PERIOD                = 1e9/CLOCK_FREQUENCY;
+localparam NUMBER_OF_DATA_BYTES     = 1;
+localparam NUMBER_OF_REGISTER_BYTES = 1;
+localparam DATA_WIDTH               = (NUMBER_OF_DATA_BYTES*8);
+localparam REGISTER_WIDTH           = (NUMBER_OF_REGISTER_BYTES*8);
+localparam ADDRESS_WIDTH            = 7;
+localparam CLOCK_FREQUENCY          = 50_000_000;
+localparam CLOCK_PERIOD             = 1e9/CLOCK_FREQUENCY;
+localparam SLAVE_0_ADDRESS          = 7'b001_0001;
+localparam SLAVE_1_ADDRESS          = 7'b101_1010;
+
 
 reg                             clock           =   0;
 reg                             reset_n         =   1;
@@ -83,12 +88,22 @@ i2c_master #(
 );
 
 
-
 pullup pullup_scl(scl); // pullup scl line
 pullup pullup_sda(sda); // pullup sda line
 
 
-i2c_slave i2c_slave(
+i2c_slave #(
+    .I2C_ADR        (SLAVE_0_ADDRESS),
+    .SLAVE_NUMBER   (0)
+) i2c_slave_0(
+    .scl    (scl),
+    .sda    (sda)
+);
+
+i2c_slave #(
+    .I2C_ADR        (SLAVE_1_ADDRESS),
+    .SLAVE_NUMBER   (1)
+) i2c_slave_1(
     .scl    (scl),
     .sda    (sda)
 );
@@ -100,7 +115,7 @@ initial begin
     
     forever begin
         #(CLOCK_PERIOD/2);
-        clock   =   ~clock;
+        clock   = ~clock;
     end
 end
 
@@ -116,6 +131,8 @@ initial begin
 
     case_000();
     case_001();
+    case_002();
+    case_003();
     $display("Tests have finsihed");
     $stop();
 end
