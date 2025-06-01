@@ -23,9 +23,8 @@ module i2c_master#(
     parameter integer unsigned NUMBER_OF_DATA_BYTES         = 1,
     parameter integer unsigned NUMBER_OF_REGISTER_BYTES     = 1,
     parameter integer unsigned ADDRESS_WIDTH                = 7,
-    parameter integer unsigned CHECK_FOR_CLOCK_STRETCHING   = 1,
-    parameter integer unsigned CLOCK_STRETCHING_TIMER_WIDTH = 16,
-    parameter integer unsigned CLOCK_STRETCHING_MAX_COUNT   = 'hFF //set to 0 to disable, max number of divider ticks to wait during stretch check
+    parameter integer unsigned CHECK_FOR_CLOCK_STRETCHING   = 1,    //set to non zero value to enable
+    parameter integer unsigned CLOCK_STRETCHING_MAX_COUNT   = 'hFF  //set to 0 to disable, max number of divider ticks to wait during stretch check
 )(
     input   wire                                        clock,
     input   wire                                        reset_n,
@@ -50,7 +49,6 @@ i2c_master #(
     .NUMBER_OF_REGISTER_BYTES       (1),
     .ADDRESS_WIDTH                  (7),
     .CHECK_FOR_CLOCK_STRETCHING     (1),
-    .CLOCK_STRETCHING_TIMER_WIDTH   (16),
     .CLOCK_STRETCHING_MAX_COUNT     ('hFF)
 )
 i2c_master_inst(
@@ -70,6 +68,12 @@ i2c_master_inst(
     .external_serial_clock  ()
 );
 */
+
+localparam DATA_WIDTH                   = (NUMBER_OF_DATA_BYTES != 0) ? (NUMBER_OF_DATA_BYTES * 8) : 8;
+localparam REGISTER_WIDTH               = (NUMBER_OF_REGISTER_BYTES != 0) ? (NUMBER_OF_REGISTER_BYTES * 8) : 8;
+localparam MAX_NUMBER_BYTES             = (DATA_WIDTH > REGISTER_WIDTH) ? (DATA_WIDTH/8) : (REGISTER_WIDTH/8);
+localparam CLOCK_STRETCHING_TIMER_WIDTH = (CLOCK_STRETCHING_MAX_COUNT != 0) ? $clog2(CLOCK_STRETCHING_MAX_COUNT) : 1;
+
 
 wire            timeout_cycle_timer_clock;
 wire            timeout_cycle_timer_reset_n;
@@ -106,10 +110,6 @@ typedef enum
     S_WRITE_REG_DATA        = 10,
     S_SEND_ACK              = 11
 } state_type;
-
-localparam DATA_WIDTH       = (NUMBER_OF_DATA_BYTES != 0) ? (NUMBER_OF_DATA_BYTES * 8) : 8;
-localparam REGISTER_WIDTH   = (NUMBER_OF_REGISTER_BYTES != 0) ? (NUMBER_OF_REGISTER_BYTES * 8) : 8;
-localparam MAX_NUMBER_BYTES = (DATA_WIDTH > REGISTER_WIDTH) ? (DATA_WIDTH/8) : (REGISTER_WIDTH/8);
 
 state_type                                  state;
 state_type                                  _state;
@@ -150,7 +150,7 @@ assign external_serial_data         = (serial_data_output_enable)   ? serial_dat
 
 assign timeout_cycle_timer_clock    = clock;
 assign timeout_cycle_timer_reset_n  = reset_n;
-assign timeout_cycle_timer_enable   = divider_tick;
+assign timeout_cycle_timer_enable   = (CLOCK_STRETCHING_MAX_COUNT != 0) ? divider_tick : 0;
 assign timeout_cycle_timer_count    = CLOCK_STRETCHING_MAX_COUNT;
 
 always_comb begin

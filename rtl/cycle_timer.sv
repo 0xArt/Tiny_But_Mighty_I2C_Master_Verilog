@@ -62,7 +62,7 @@ end
 
 always_ff @(posedge clock or negedge reset_n) begin
     if (!reset_n) begin
-        counter <=  0;
+        counter <=  '1;
     end
     else begin
         counter <=  _counter;

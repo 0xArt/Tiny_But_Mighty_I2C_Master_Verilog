@@ -68,7 +68,6 @@ i2c_master #(
     .NUMBER_OF_REGISTER_BYTES       (NUMBER_OF_REGISTER_BYTES),
     .ADDRESS_WIDTH                  (ADDRESS_WIDTH),
     .CHECK_FOR_CLOCK_STRETCHING     (1),
-    .CLOCK_STRETCHING_TIMER_WIDTH   (16),
     .CLOCK_STRETCHING_MAX_COUNT     ('hFF)
 ) i2c_master(
             .clock                  (i2c_master_clock),
